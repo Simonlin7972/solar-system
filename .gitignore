@@ -1,0 +1,6 @@
+# Claude Code 本地工具設定（預覽伺服器、記憶）
+.claude/
+
+# 系統檔
+.DS_Store
+Thumbs.db

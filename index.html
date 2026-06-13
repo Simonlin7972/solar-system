@@ -1,0 +1,3505 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MARS — 火星 · 紅色星球</title>
+<meta name="description" content="一場深入紅色星球的沉浸式 3D 旅程" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;500;800&family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link href="https://font.emtech.cc/css/GlowSansJPEx/900" rel="stylesheet" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+<style>
+/* ============ MARS — 火星 ============ */
+:root {
+  --bg: #060309;
+  --bg-deep: #020104;
+  --rust: #ff5a2b;
+  --amber: #ffb347;
+  --dust: #c97b5a;
+  --ink: #f3e9e2;
+  --ink-dim: rgba(243, 233, 226, 0.55);
+  --hairline: rgba(255, 120, 70, 0.22);
+  --sans: "Noto Sans TC", sans-serif;
+  --heading: "GlowSansJPEx", "Noto Sans TC", sans-serif;
+  --display: "Unbounded", sans-serif;
+  --mono: "IBM Plex Mono", monospace;
+  --accent-rgb: 255, 90, 43;
+  --amber-rgb: 255, 179, 71;
+  --glow-white: #fff2e8;
+}
+
+/* ---- 地球主題 ---- */
+body.earth {
+  --bg: #03070d;
+  --bg-deep: #010409;
+  --rust: #3ea6ff;
+  --amber: #8fd8ff;
+  --dust: #6f93b8;
+  --ink: #e9f1f6;
+  --ink-dim: rgba(233, 241, 246, 0.55);
+  --hairline: rgba(90, 170, 255, 0.22);
+  --accent-rgb: 62, 166, 255;
+  --amber-rgb: 143, 216, 255;
+  --glow-white: #eaf6ff;
+}
+
+/* ---- 月球主題 ---- */
+body.moon {
+  --bg: #04050a;
+  --bg-deep: #020308;
+  --rust: #b7c6dd;
+  --amber: #eef3fa;
+  --dust: #76839a;
+  --ink: #eef1f6;
+  --ink-dim: rgba(238, 241, 246, 0.55);
+  --hairline: rgba(190, 205, 230, 0.22);
+  --accent-rgb: 183, 198, 221;
+  --amber-rgb: 238, 243, 250;
+  --glow-white: #ffffff;
+}
+
+/* ---- 太陽主題 ---- */
+body.sun {
+  --bg: #0a0502;
+  --bg-deep: #040201;
+  --rust: #ffb02e;
+  --amber: #ffe9b0;
+  --dust: #c98e4a;
+  --ink: #f8f0e3;
+  --ink-dim: rgba(248, 240, 227, 0.55);
+  --hairline: rgba(255, 190, 80, 0.25);
+  --accent-rgb: 255, 176, 46;
+  --amber-rgb: 255, 233, 176;
+  --glow-white: #fff8e8;
+}
+
+/* ---- 太陽系首頁主題 ---- */
+body.home {
+  --bg: #020308;
+  --bg-deep: #010103;
+  --rust: #8fb5ff;
+  --amber: #e8f0ff;
+  --dust: #6b7a99;
+  --ink: #eef2fa;
+  --ink-dim: rgba(238, 242, 250, 0.55);
+  --hairline: rgba(140, 175, 255, 0.22);
+  --accent-rgb: 143, 181, 255;
+  --amber-rgb: 232, 240, 255;
+  --glow-white: #f4f8ff;
+  overflow: hidden;
+}
+body.home .dots,
+body.home .progress,
+body.home #hudScroll { display: none; }
+body.home #scene { touch-action: none; }
+
+/* hover 資訊浮籤 */
+.planet-tip {
+  position: fixed;
+  z-index: 23;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  max-width: 230px;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--hairline);
+  background: rgba(2, 3, 8, 0.78);
+  backdrop-filter: blur(8px);
+}
+.planet-tip__name { color: var(--amber); }
+.planet-tip__desc { font-family: var(--sans); font-size: 0.8rem; line-height: 1.6; color: var(--ink-dim); text-transform: none; letter-spacing: 0; }
+.planet-tip__badge { color: var(--rust); font-size: 0.6rem; }
+
+/* 聚焦檔案卡 */
+.focus-card {
+  position: fixed;
+  left: 2rem;
+  bottom: 4.6rem;
+  z-index: 24;
+  width: min(320px, calc(100vw - 3rem));
+  padding: 1.6rem;
+  border: 1px solid var(--hairline);
+  background: rgba(2, 3, 8, 0.82);
+  backdrop-filter: blur(10px);
+}
+.focus-card::before,
+.focus-card::after { content: ""; position: absolute; width: 26px; height: 26px; }
+.focus-card::before { top: -1px; left: -1px; border-top: 2px solid var(--rust); border-left: 2px solid var(--rust); }
+.focus-card::after { bottom: -1px; right: -1px; border-bottom: 2px solid var(--rust); border-right: 2px solid var(--rust); }
+.focus-card__tag { color: var(--rust); display: block; margin-bottom: 0.5rem; }
+.focus-card__name { font-family: var(--heading); font-size: 2rem; font-weight: 900; margin-bottom: 0.6rem; }
+.focus-card__desc { font-size: 0.9rem; line-height: 1.8; color: var(--ink-dim); margin-bottom: 1rem; }
+.focus-card__stats { list-style: none; margin: 0 0 1.2rem; padding: 0; display: grid; gap: 0.45rem; }
+.focus-card__stats li { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.7rem; color: var(--ink-dim); border-bottom: 1px dashed rgba(var(--accent-rgb), 0.18); padding-bottom: 0.35rem; }
+.focus-card__stats li span:last-child { color: var(--amber); }
+.focus-card__enter {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bg-deep);
+  background: linear-gradient(90deg, var(--rust), var(--amber));
+  border: none;
+  border-radius: 999px;
+  padding: 0.7rem 1.5rem;
+  cursor: pointer;
+  box-shadow: 0 0 18px rgba(var(--accent-rgb), 0.4);
+}
+.focus-card__soon {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  color: var(--dust);
+  border: 1px dashed var(--hairline);
+  border-radius: 999px;
+  padding: 0.7rem 1.5rem;
+  display: inline-block;
+}
+.focus-card__close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  background: transparent;
+  border: none;
+  color: var(--ink-dim);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  padding: 0.3rem;
+}
+
+/* 底部快速跳轉列 */
+.planet-bar {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 22;
+  display: flex;
+  gap: 0.1rem;
+  padding: 0.3rem;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  max-width: calc(100vw - 2rem);
+  overflow-x: auto;
+}
+.planet-bar button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--ink-dim);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  padding: 0.5rem 0.72rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  transition: color 0.3s, background 0.3s;
+}
+.planet-bar button:hover { color: var(--bg-deep); background: var(--amber); }
+
+@media (max-width: 760px) {
+  .focus-card { left: 1rem; right: 1rem; width: auto; bottom: 4.2rem; }
+}
+
+[hidden] { display: none !important; }
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-weight: 400;
+  overflow-x: hidden;
+  cursor: crosshair;
+}
+
+::selection { background: var(--rust); color: var(--bg-deep); }
+
+.mono {
+  font-family: var(--mono);
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+/* ---- 3D canvas ---- */
+#scene {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  display: block;
+}
+
+/* ---- film grain + vignette ---- */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at center, transparent 55%, rgba(2, 1, 4, 0.55) 100%);
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: -50%;
+  z-index: 31;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: grain 0.9s steps(4) infinite;
+}
+@keyframes grain {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-2%, 3%); }
+  50% { transform: translate(3%, -2%); }
+  75% { transform: translate(-3%, -3%); }
+  100% { transform: translate(2%, 2%); }
+}
+
+/* ---- intro ---- */
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: var(--bg-deep);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  transition: opacity 0.9s ease 0.2s, visibility 0.9s ease 0.2s;
+}
+.intro.done { opacity: 0; visibility: hidden; }
+.intro__line {
+  width: 140px;
+  height: 1px;
+  background: var(--hairline);
+  position: relative;
+  overflow: hidden;
+}
+.intro__line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--rust);
+  transform: translateX(-100%);
+  animation: scan 1.4s ease-in-out infinite;
+}
+@keyframes scan {
+  to { transform: translateX(100%); }
+}
+.intro__text { color: var(--ink-dim); }
+
+/* ---- 行星切換轉場遮罩 ---- */
+.fader {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: var(--bg-deep);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+.fader.on { opacity: 1; }
+
+/* ---- HUD ---- */
+.hud {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: space-between;
+  padding: 1.4rem 2rem;
+  color: var(--ink-dim);
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+.hud--top { top: 0; }
+.hud--bottom { bottom: 0; }
+.hud__brand { color: var(--rust); }
+
+/* ---- 行星切換選單 ---- */
+.planet-nav {
+  position: fixed;
+  top: 1.1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 26;
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  overflow: hidden;
+  backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.35);
+}
+.planet-nav button {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  background: transparent;
+  border: none;
+  padding: 0.65rem 1.4rem;
+  cursor: pointer;
+  transition: color 0.35s, background 0.35s, box-shadow 0.35s;
+}
+.planet-nav button.active {
+  color: var(--bg-deep);
+  background: linear-gradient(90deg, var(--rust), var(--amber));
+  box-shadow: 0 0 18px rgba(var(--accent-rgb), 0.55);
+}
+
+/* ---- section dots ---- */
+.dots {
+  position: fixed;
+  right: 1.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+.dots button {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--dust);
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.4s, transform 0.4s, box-shadow 0.4s;
+}
+.dots button.active {
+  background: var(--rust);
+  border-color: var(--rust);
+  transform: scale(1.4);
+  box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.8);
+}
+
+/* ---- progress bar ---- */
+.progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 25;
+  background: rgba(var(--accent-rgb), 0.12);
+}
+.progress__bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--rust), var(--amber));
+  box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.9);
+}
+
+/* ---- layout ---- */
+main { position: relative; z-index: 10; }
+
+.panel {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding: 6rem 8vw;
+}
+.panel--tall { min-height: 130vh; }
+
+.content { max-width: 560px; }
+.content--left { margin-right: auto; }
+.content--right { margin-left: auto; }
+.content--center { margin: 0 auto; text-align: center; }
+
+.kicker {
+  color: var(--rust);
+  margin-bottom: 1.2rem;
+  display: inline-block;
+}
+
+h2 {
+  font-family: var(--heading);
+  font-size: clamp(2.4rem, 5.5vw, 4.2rem);
+  font-weight: 900;
+  letter-spacing: -0.015em;
+  line-height: 1.1;
+  margin-bottom: 1.6rem;
+  text-shadow: 0 0 60px rgba(var(--accent-rgb), 0.25);
+}
+
+.lead {
+  font-size: 1.05rem;
+  line-height: 2;
+  color: var(--ink-dim);
+  margin-bottom: 2.5rem;
+}
+
+/* ---- hero ---- */
+.panel--hero {
+  justify-content: center;
+  text-align: center;
+}
+.hero__eyebrow {
+  color: var(--amber);
+  margin-bottom: 2rem;
+  display: block;
+}
+.hero__title {
+  position: relative;
+  display: inline-block;
+  line-height: 1;
+}
+.hero__zh {
+  display: block;
+  font-family: var(--heading);
+  font-weight: 900;
+  font-size: clamp(5rem, 18vw, 13rem);
+  letter-spacing: -0.02em;
+  background: linear-gradient(165deg, var(--glow-white) 20%, var(--amber) 55%, var(--rust) 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 50px rgba(var(--accent-rgb), 0.35));
+}
+.hero__en {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(1.4rem, 4.5vw, 3.2rem);
+  letter-spacing: 1.2em;
+  text-indent: 1.2em;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(var(--amber-rgb), 0.5);
+  pointer-events: none;
+}
+.hero__sub {
+  margin-top: 2.5rem;
+  font-size: 1.05rem;
+  line-height: 2.1;
+  color: var(--ink-dim);
+}
+.hero__scroll {
+  margin-top: 4rem;
+  color: var(--dust);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.hero__arrow {
+  display: inline-block;
+  animation: bob 1.6s ease-in-out infinite;
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(6px); }
+}
+
+.hero--end .hero__end-title {
+  font-size: clamp(2.8rem, 8vw, 6rem);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  margin: 1rem 0 2rem;
+  background: linear-gradient(160deg, var(--glow-white) 30%, var(--rust));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.hero__sign {
+  margin-top: 4rem;
+  color: var(--rust);
+  border: 1px solid var(--hairline);
+  display: inline-block;
+  padding: 0.9rem 2rem;
+  border-radius: 999px;
+  backdrop-filter: blur(4px);
+  background: rgba(var(--accent-rgb), 0.05);
+}
+
+/* ---- stats ---- */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  background: var(--hairline);
+  border: 1px solid var(--hairline);
+}
+.stat {
+  background: rgba(6, 3, 9, 0.72);
+  backdrop-filter: blur(6px);
+  padding: 1.6rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+}
+.stat__num {
+  font-size: 2rem;
+  font-weight: 500;
+  color: var(--amber);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.stat__unit {
+  color: var(--rust);
+  margin-top: 0.1rem;
+}
+.stat__label {
+  margin-top: 0.7rem;
+  font-size: 0.85rem;
+  color: var(--ink-dim);
+}
+
+/* ---- features ---- */
+.feature {
+  border-left: 2px solid var(--rust);
+  padding: 0.4rem 0 0.4rem 1.6rem;
+  margin-bottom: 2.4rem;
+  background: linear-gradient(90deg, rgba(var(--accent-rgb), 0.07), transparent 70%);
+}
+.feature h3 {
+  font-family: var(--heading);
+  font-size: 1.5rem;
+  font-weight: 900;
+  margin-bottom: 0.6rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.8rem;
+}
+.feature__tag { color: var(--dust); }
+.feature p {
+  line-height: 1.95;
+  color: var(--ink-dim);
+  font-size: 0.98rem;
+}
+.feature strong { color: var(--amber); font-weight: 600; }
+
+/* ---- moons ---- */
+.moons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.4rem;
+  text-align: left;
+}
+.moon-card {
+  border: 1px solid var(--hairline);
+  padding: 1.8rem;
+  background: rgba(6, 3, 9, 0.72);
+  backdrop-filter: blur(6px);
+  position: relative;
+  overflow: hidden;
+}
+.moon-card::before {
+  content: "";
+  position: absolute;
+  top: -30px;
+  right: -30px;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 1px dashed rgba(var(--amber-rgb), 0.3);
+  animation: spin 14s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.moon-card__id {
+  color: var(--rust);
+  display: block;
+  margin-bottom: 1rem;
+}
+.moon-card p {
+  line-height: 1.9;
+  font-size: 0.92rem;
+  color: var(--ink-dim);
+}
+
+/* ---- timeline ---- */
+.timeline {
+  list-style: none;
+  position: relative;
+  padding-left: 2rem;
+}
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 1px;
+  background: linear-gradient(var(--rust), transparent);
+}
+.timeline li {
+  position: relative;
+  display: flex;
+  gap: 1.6rem;
+  margin-bottom: 2.6rem;
+  align-items: baseline;
+}
+.timeline li::before {
+  content: "";
+  position: absolute;
+  left: -2rem;
+  top: 6px;
+  width: 9px;
+  height: 9px;
+  margin-left: -4px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 2px solid var(--rust);
+  box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.7);
+}
+.timeline__year {
+  color: var(--amber);
+  font-size: 1rem;
+  min-width: 3.6rem;
+}
+.timeline h4 {
+  font-family: var(--heading);
+  font-size: 1.15rem;
+  font-weight: 900;
+  margin-bottom: 0.4rem;
+}
+.timeline p {
+  font-size: 0.92rem;
+  line-height: 1.9;
+  color: var(--ink-dim);
+}
+
+/* ---- reveal animation ---- */
+.reveal {
+  opacity: 0;
+  transform: translateY(36px);
+  transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1), transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.reveal:nth-child(2) { transition-delay: 0.08s; }
+.reveal:nth-child(3) { transition-delay: 0.16s; }
+.reveal:nth-child(4) { transition-delay: 0.24s; }
+.reveal:nth-child(5) { transition-delay: 0.32s; }
+.reveal:nth-child(6) { transition-delay: 0.4s; }
+
+/* ---- 故事卡（任務檔案） ---- */
+.panel--story { justify-content: center; }
+.story {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: clamp(2rem, 5vw, 3.4rem);
+  border: 1px solid var(--hairline);
+  background: rgba(3, 3, 9, 0.66);
+  backdrop-filter: blur(8px);
+  position: relative;
+}
+.story::before,
+.story::after {
+  content: "";
+  position: absolute;
+  width: 30px;
+  height: 30px;
+}
+.story::before { top: -1px; left: -1px; border-top: 2px solid var(--rust); border-left: 2px solid var(--rust); }
+.story::after { bottom: -1px; right: -1px; border-bottom: 2px solid var(--rust); border-right: 2px solid var(--rust); }
+.story__label { color: var(--rust); display: block; margin-bottom: 1.4rem; }
+.story h2 { font-size: clamp(2rem, 4.5vw, 3rem); }
+.story__quote {
+  font-family: var(--heading);
+  font-weight: 900;
+  font-size: clamp(1.15rem, 2.4vw, 1.55rem);
+  line-height: 1.95;
+  margin-bottom: 1.6rem;
+  background: linear-gradient(150deg, var(--glow-white), var(--amber));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.story p { line-height: 2.05; color: var(--ink-dim); font-size: 0.95rem; margin-bottom: 1.1rem; }
+.story p:last-child { margin-bottom: 0; }
+
+/* ---- 殖民挑戰卡 ---- */
+.challenges {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.2rem;
+  max-width: 880px;
+  margin: 2.6rem auto 0;
+  text-align: left;
+}
+.challenge {
+  border: 1px solid var(--hairline);
+  background: rgba(3, 3, 9, 0.6);
+  backdrop-filter: blur(6px);
+  padding: 1.5rem 1.3rem;
+}
+.challenge .mono { color: var(--rust); display: block; margin-bottom: 0.7rem; }
+.challenge h4 { font-family: var(--heading); font-size: 1.1rem; margin-bottom: 0.6rem; }
+.challenge p { font-size: 0.87rem; line-height: 1.9; color: var(--ink-dim); }
+
+/* ---- 生命長卷年代 ---- */
+.timeline--epoch .timeline__year { min-width: 6.2rem; font-size: 0.95rem; }
+
+/* ---- 大引言 ---- */
+.bigquote {
+  max-width: 660px;
+  margin: 2.4rem auto;
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  line-height: 2.15;
+  color: var(--ink-dim);
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  padding: 1.8rem 0.5rem;
+}
+.bigquote cite {
+  display: block;
+  margin-top: 1.2rem;
+  font-style: normal;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  color: var(--rust);
+}
+
+/* ---- 月相 ---- */
+.phases {
+  display: flex;
+  justify-content: center;
+  gap: clamp(0.6rem, 2vw, 1.3rem);
+  flex-wrap: wrap;
+  margin: 2.8rem 0 1.8rem;
+}
+.phase { display: flex; flex-direction: column; align-items: center; gap: 0.8rem; }
+.phase__disc {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: #e9eef6;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 16px rgba(var(--amber-rgb), 0.25), inset -4px -4px 10px rgba(0, 0, 0, 0.25);
+}
+.phase__disc::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: #05060c;
+  transform: translateX(var(--ph, 0%));
+}
+.phase span { font-size: 0.66rem; color: var(--ink-dim); font-family: var(--mono); letter-spacing: 0.12em; }
+
+/* ---- 個人檔案換算器 ---- */
+.calc {
+  margin-top: 1.6rem;
+  border: 1px solid var(--hairline);
+  background: rgba(3, 3, 9, 0.6);
+  backdrop-filter: blur(6px);
+  padding: 1.4rem;
+}
+.calc .kicker { margin-bottom: 1.1rem; }
+.calc__row {
+  display: flex;
+  gap: 1.2rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.1rem;
+}
+.calc__row label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  color: var(--ink-dim);
+}
+.calc input {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--hairline);
+  color: var(--amber);
+  font-family: var(--mono);
+  padding: 0.5rem 0.7rem;
+  border-radius: 4px;
+  width: 8rem;
+  font-size: 0.85rem;
+}
+.calc input:focus { outline: 1px solid var(--rust); }
+.calc input::-webkit-calendar-picker-indicator { filter: invert(0.7); }
+.calc__out { display: grid; gap: 0.5rem; }
+.calc__line {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  color: var(--ink-dim);
+  border-bottom: 1px dashed rgba(var(--accent-rgb), 0.18);
+  padding-bottom: 0.4rem;
+}
+.calc__line span:last-child { color: var(--amber); }
+.calc__hint {
+  font-family: var(--mono);
+  color: var(--dust);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+}
+
+/* ---- 真實比例切換 ---- */
+.scale-toggle {
+  position: fixed;
+  right: 2rem;
+  bottom: 4.6rem;
+  z-index: 22;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.6rem;
+}
+.scale-toggle button {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  padding: 0.6rem 1.2rem;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: color 0.3s, background 0.3s, box-shadow 0.3s;
+}
+.scale-toggle button.active {
+  color: var(--bg-deep);
+  background: linear-gradient(90deg, var(--rust), var(--amber));
+  box-shadow: 0 0 16px rgba(var(--accent-rgb), 0.45);
+}
+.scale-toggle span {
+  max-width: 230px;
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  color: var(--dust);
+  line-height: 1.9;
+}
+
+/* ---- 各星球版面個性 ---- */
+body.moon h2 { letter-spacing: 0.05em; }
+body.moon .lead { line-height: 2.3; }
+body.earth .feature { border-left-width: 3px; }
+
+/* ---- responsive ---- */
+@media (max-width: 760px) {
+  .challenges { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 760px) {
+  .panel { padding: 5rem 7vw; }
+  .moons { grid-template-columns: 1fr; }
+  .stats { grid-template-columns: 1fr 1fr; }
+  .hud { padding: 1rem 1.2rem; }
+  .hud__coords { display: none; }
+  .dots { right: 0.8rem; }
+  .hero__en { letter-spacing: 0.6em; text-indent: 0.6em; }
+  .content { max-width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before { animation: none; }
+  .reveal { transition: none; opacity: 1; transform: none; }
+  html { scroll-behavior: auto; }
+}
+</style>
+</head>
+<body>
+
+<!-- 3D 背景畫布 -->
+<canvas id="scene"></canvas>
+
+<!-- 入場遮罩 -->
+<div class="intro" id="intro">
+  <div class="intro__line"></div>
+  <p class="intro__text mono">ESTABLISHING ORBIT — SOL 4</p>
+</div>
+
+<!-- 行星切換轉場遮罩 -->
+<div class="fader" id="fader"></div>
+
+<!-- 太陽系首頁 UI -->
+<div class="planet-tip" id="planetTip" hidden>
+  <span class="mono planet-tip__name" id="tipName"></span>
+  <span class="planet-tip__desc" id="tipDesc"></span>
+  <span class="mono planet-tip__badge" id="tipBadge"></span>
+</div>
+
+<aside class="focus-card" id="focusCard" hidden>
+  <button class="focus-card__close" id="focusClose" aria-label="關閉">✕</button>
+  <span class="mono focus-card__tag" id="focusTag"></span>
+  <h3 class="focus-card__name" id="focusName"></h3>
+  <p class="focus-card__desc" id="focusDesc"></p>
+  <ul class="focus-card__stats mono" id="focusStats"></ul>
+  <button class="focus-card__enter" id="focusEnter">進入頁面 →</button>
+  <span class="focus-card__soon" id="focusSoon" hidden>COMING SOON · 即將推出</span>
+</aside>
+
+<nav class="planet-bar" id="planetBar" aria-label="快速跳轉" hidden></nav>
+
+<!-- 真實比例切換（首頁限定） -->
+<div class="scale-toggle" id="scaleToggle" hidden>
+  <button id="scaleBtn">REAL SCALE · 真實比例</button>
+  <span id="scaleNote" hidden>行星大小已是真實比例——若距離也真實，地球會在 180 公尺外，小到看不見。</span>
+</div>
+
+<!-- HUD 介面 -->
+<header class="hud hud--top">
+  <span class="mono hud__brand" id="hudBrand">MARS//MISSION</span>
+  <span class="mono hud__coords" id="hudCoords">LAT 00.00 · LON 00.00</span>
+</header>
+<footer class="hud hud--bottom">
+  <span class="mono" id="hudSystem">ARES SYSTEM · 4TH PLANET</span>
+  <span class="mono" id="hudScroll">000%</span>
+</footer>
+
+<!-- 行星切換選單 -->
+<nav class="planet-nav" aria-label="行星切換">
+  <button id="btnHome">太陽系 SOLAR</button>
+  <button id="btnMars" class="active">火星 MARS</button>
+  <button id="btnEarth">地球 EARTH</button>
+  <button id="btnMoon">月球 MOON</button>
+  <button id="btnSun">太陽 SUN</button>
+</nav>
+
+<!-- 區段導覽點（依星球章節數動態生成） -->
+<nav class="dots" id="dots" aria-label="章節導覽"></nav>
+
+<div class="progress"><div class="progress__bar" id="progressBar"></div></div>
+
+<main id="mainMars">
+
+  <!-- 0 · 序章 -->
+  <section class="panel panel--hero" data-section="0">
+    <div class="hero">
+      <p class="hero__eyebrow mono reveal">THE RED PLANET · 距離地球 225,000,000 KM</p>
+      <h1 class="hero__title">
+        <span class="hero__zh reveal">火星</span>
+        <span class="hero__en reveal" aria-hidden="true">MARS</span>
+      </h1>
+      <p class="hero__sub reveal">一顆以戰神為名的星球。<br />鏽紅的荒漠之下，藏著太陽系最壯闊的地貌，<br />以及人類成為跨行星物種的下一步。</p>
+      <div class="hero__scroll mono reveal">SCROLL TO DESCEND<span class="hero__arrow">↓</span></div>
+    </div>
+  </section>
+
+  <!-- 1 · 行星數據 -->
+  <section class="panel" data-section="1">
+    <div class="content content--left">
+      <p class="kicker mono reveal">01 / PLANETARY DATA</p>
+      <h2 class="reveal">行星檔案</h2>
+      <p class="lead reveal">火星是太陽系第四顆行星，體積約為地球的 15%。表面富含氧化鐵——這就是它鏽紅色澤的來源。</p>
+      <div class="stats">
+        <div class="stat reveal"><span class="stat__num mono" data-count="6779">0</span><span class="stat__unit mono">KM</span><span class="stat__label">赤道直徑</span></div>
+        <div class="stat reveal"><span class="stat__num mono" data-count="687">0</span><span class="stat__unit mono">天</span><span class="stat__label">公轉一年</span></div>
+        <div class="stat reveal"><span class="stat__num mono" data-count="24.6" data-decimal="1">0</span><span class="stat__unit mono">小時</span><span class="stat__label">自轉一天（1 SOL）</span></div>
+        <div class="stat reveal"><span class="stat__num mono" data-count="-63">0</span><span class="stat__unit mono">°C</span><span class="stat__label">平均地表溫度</span></div>
+        <div class="stat reveal"><span class="stat__num mono" data-count="3.71" data-decimal="2">0</span><span class="stat__unit mono">M/S²</span><span class="stat__label">表面重力（地球 38%）</span></div>
+        <div class="stat reveal"><span class="stat__num mono" data-count="2">0</span><span class="stat__unit mono">顆</span><span class="stat__label">天然衛星</span></div>
+      </div>
+      <div class="calc reveal" data-calc="mars">
+        <p class="kicker mono">PERSONAL FILE · 你的火星檔案</p>
+        <div class="calc__row">
+          <label>體重 <input class="calc__w" type="number" min="1" max="999" placeholder="60" /> KG</label>
+          <label>生日 <input class="calc__b" type="date" /></label>
+        </div>
+        <div class="calc__out"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · 地理奇觀 -->
+  <section class="panel" data-section="2">
+    <div class="content content--right">
+      <p class="kicker mono reveal">02 / GEOGRAPHY</p>
+      <h2 class="reveal">極端地貌</h2>
+      <div class="feature reveal">
+        <h3>奧林帕斯山 <span class="mono feature__tag">OLYMPUS MONS</span></h3>
+        <p>太陽系最高的火山，高達 <strong>21.9 公里</strong> —— 將近三座聖母峰疊起來。山體底部直徑 600 公里，足以覆蓋整個台灣二十次。</p>
+      </div>
+      <div class="feature reveal">
+        <h3>水手號峽谷 <span class="mono feature__tag">VALLES MARINERIS</span></h3>
+        <p>一道劃過行星表面的巨大傷疤，長 <strong>4,000 公里</strong>、深 7 公里。若放在地球上，可以從台北一路裂到新疆。</p>
+      </div>
+      <div class="feature reveal">
+        <h3>極地冰冠 <span class="mono feature__tag">POLAR ICE CAPS</span></h3>
+        <p>由水冰與乾冰（固態二氧化碳）構成，隨季節消長。南極冰冠之下，雷達曾偵測到疑似液態鹹水湖的訊號。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · 水的謎團 -->
+  <section class="panel" data-section="3">
+    <div class="content content--left">
+      <p class="kicker mono reveal">03 / THE WATER MYSTERY</p>
+      <h2 class="reveal">水的謎團</h2>
+      <p class="lead reveal">今天的火星是一片鏽紅色的乾燥荒漠，但它的表面寫滿了水的筆跡——四十億年前，這裡曾有河流、湖泊，甚至可能有一片北半球海洋。</p>
+      <div class="feature reveal">
+        <h3>古河道網絡 <span class="mono feature__tag">ANCIENT VALLEYS</span></h3>
+        <p>數千條乾涸的河谷與三角洲刻在地表上。毅力號正在探勘的耶澤羅坑，就是一個 35 億年前的<strong>湖泊三角洲</strong>。</p>
+      </div>
+      <div class="feature reveal">
+        <h3>地下冰層 <span class="mono feature__tag">SUBSURFACE ICE</span></h3>
+        <p>兩極冰冠與中緯度凍土儲存著大量水冰——若全部融化，足以讓整顆星球覆上 <strong>35 公尺深</strong>的海。</p>
+      </div>
+      <div class="feature reveal">
+        <h3>季節性斜坡紋線 <span class="mono feature__tag">RSL</span></h3>
+        <p>每到夏季，坑壁上會浮現暗色條紋，入冬又消退。它們可能是鹽水滲流——火星<strong>「現在」</strong>也許仍有液態水在流動。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · 雙衛星 -->
+  <section class="panel" data-section="4">
+    <div class="content content--center">
+      <p class="kicker mono reveal">04 / TWO MOONS</p>
+      <h2 class="reveal">恐懼與驚慌</h2>
+      <p class="lead reveal">火星的兩顆衛星以戰神之子命名：<br />Phobos（恐懼）與 Deimos（驚慌）。</p>
+      <div class="moons">
+        <div class="moon-card reveal">
+          <span class="mono moon-card__id">PHOBOS · 火衛一</span>
+          <p>直徑僅 22 km 的不規則岩塊，每 7.6 小時繞火星一圈——比火星自轉還快。它正以每百年 1.8 公尺的速度墜向火星，五千萬年後將解體成行星環。</p>
+        </div>
+        <div class="moon-card reveal">
+          <span class="mono moon-card__id">DEIMOS · 火衛二</span>
+          <p>更小、更遠、更安靜。直徑約 12 km，30.3 小時繞行一圈。從火星地表看，它只是一顆不太閃的星星。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 · 恐怖七分鐘（故事） -->
+  <section class="panel panel--story" data-section="5">
+    <div class="story reveal">
+      <span class="mono story__label">MISSION FILE · 2012-08-06 · GALE CRATER</span>
+      <h2>恐怖七分鐘</h2>
+      <p class="story__quote">「從進入大氣到著陸只有七分鐘，而訊號回傳地球要十四分鐘——當我們『聽到』它開始降落時，它其實早已活著、或者死了。」</p>
+      <p>好奇號重達一噸，傳統的氣囊彈跳方案根本接不住它。工程師想出一個瘋狂的方案：讓一座火箭平台懸停在半空中，像「空中吊車」一樣用尼龍繩把探測車緩緩垂降到地面，然後切斷纜繩、自行飛離墜毀。</p>
+      <p>整個過程全自動。七分鐘內要完成 76 個火工品引爆、減速 21,000 公里——任何一步失誤，任務就在抵達的那一刻結束。</p>
+      <p>2012 年 8 月 6 日，控制室在沉默中等了十四分鐘。然後耳機裡傳來：「Touchdown confirmed.」——全場沸騰，有人哭了。那一夜之後，「恐怖七分鐘」成了行星探測的代名詞。</p>
+    </div>
+  </section>
+
+  <!-- 6 · 探測任務 -->
+  <section class="panel panel--tall" data-section="6">
+    <div class="content content--left">
+      <p class="kicker mono reveal">06 / MISSIONS</p>
+      <h2 class="reveal">六十年探測史</h2>
+      <ol class="timeline">
+        <li class="reveal"><span class="mono timeline__year">1965</span><div><h4>水手 4 號 MARINER 4</h4><p>人類首次飛掠火星，傳回 21 張模糊照片——也一夜粉碎了流傳半世紀的「火星運河文明」幻想。</p></div></li>
+        <li class="reveal"><span class="mono timeline__year">1971</span><div><h4>水手 9 號 MARINER 9</h4><p>第一個環繞火星的人造衛星。抵達時迎接它的是一場吞沒全球的沙塵暴——等塵埃落定，它拍到了奧林帕斯山。</p></div></li>
+        <li class="reveal"><span class="mono timeline__year">1976</span><div><h4>維京 1 號 VIKING 1</h4><p>首次成功軟著陸。它的生命偵測實驗給出了曖昧的陽性訊號——科學家爭論至今，仍無定論。</p></div></li>
+        <li class="reveal"><span class="mono timeline__year">1997</span><div><h4>旅居者號 SOJOURNER</h4><p>第一台火星探測車，只有微波爐大小，卻開啟了地表漫遊時代。</p></div></li>
+        <li class="reveal"><span class="mono timeline__year">2004</span><div><h4>精神號與機會號 SPIRIT &amp; OPPORTUNITY</h4><p>設計壽命 90 天，機會號跑了 15 年。它的最後一筆遙測被浪漫地譯成：「我的電量很低，天色漸暗。」</p></div></li>
+        <li class="reveal"><span class="mono timeline__year">2012</span><div><h4>好奇號 CURIOSITY</h4><p>核動力的一噸重實驗室，證實蓋爾坑曾是適合生命的湖泊環境。至今仍在攀登夏普山。</p></div></li>
+        <li class="reveal"><span class="mono timeline__year">2021</span><div><h4>毅力號 + 機智號 PERSEVERANCE</h4><p>採集岩芯等待送回地球；1.8 公斤的機智號直升機原定試飛 5 次，最後完成了 72 次——人類在另一顆行星上的首次動力飛行。</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 7 · 移民倒數 -->
+  <section class="panel panel--hero" data-section="7">
+    <div class="hero hero--end">
+      <p class="kicker mono reveal">07 / NEXT</p>
+      <h2 class="hero__end-title reveal">下一站，<br />成為火星人。</h2>
+      <p class="hero__sub reveal">從機器人到太空人，從探測到定居。<br />在出發之前，有三道難題等著被解開。</p>
+      <div class="challenges">
+        <div class="challenge reveal">
+          <span class="mono">01 · RADIATION</span>
+          <h4>輻射</h4>
+          <p>沒有磁場、大氣只有地球的 1%——宇宙射線長驅直入。第一代居住艙，可能得埋進地下或冰層裡。</p>
+        </div>
+        <div class="challenge reveal">
+          <span class="mono">02 · FOOD</span>
+          <h4>食物</h4>
+          <p>地球補給一趟要等 26 個月。光種馬鈴薯不夠——得在封閉溫室裡，建立一套不會崩潰的微型生態系。</p>
+        </div>
+        <div class="challenge reveal">
+          <span class="mono">03 · STARSHIP</span>
+          <h4>星艦</h4>
+          <p>SpaceX 的不鏽鋼巨艦，設計運力 100 噸、可完全重複使用。它的目標從來不是插旗——是建一座城。</p>
+        </div>
+      </div>
+      <p class="mono hero__sign reveal">SEE YOU ON MARS · 我們火星見</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ================= 地球 ================= -->
+<main id="mainEarth" hidden>
+
+  <!-- 0 · 序章 -->
+  <section class="panel panel--hero" data-section="0">
+    <div class="hero">
+      <p class="hero__eyebrow mono reveal">THE BLUE MARBLE · 距離太陽 149,600,000 KM</p>
+      <h1 class="hero__title">
+        <span class="hero__zh reveal">地球</span>
+        <span class="hero__en reveal" aria-hidden="true">EARTH</span>
+      </h1>
+      <p class="hero__sub reveal">目前已知唯一孕育生命的行星。<br />71% 的表面被海洋覆蓋，一層薄薄的大氣，<br />守護著四十億年的生命故事。</p>
+      <div class="hero__scroll mono reveal">SCROLL TO DESCEND<span class="hero__arrow">↓</span></div>
+    </div>
+  </section>
+
+  <!-- 1 · 行星數據 -->
+  <section class="panel" data-section="1">
+    <div class="content content--left">
+      <p class="kicker mono reveal">01 / PLANETARY DATA</p>
+      <h2 class="reveal">行星檔案</h2>
+      <p class="lead reveal">地球是太陽系第三顆行星，也是已知唯一表面擁有液態水海洋的世界。從太空回望，它是一顆懸在黑暗中的藍色彈珠。</p>
+      <div class="stats">
+        <div class="stat reveal"><span class="stat__num mono" data-count="12742">0</span><span class="stat__unit mono">KM</span><span class="stat__label">赤道直徑</span></div>
+        <div class="stat reveal"><span class="stat__num mono" data-count="365.25" data-decimal="2">0</span><span class="stat__unit mono">天</span><span class="stat__label">公轉一年</span></div>
+        <div class="stat reveal"><span class="stat__num mono" data-count="23.9" data-decimal="1">0</span><span class="stat__unit mono">小時</span><span class="stat__label">自轉一天</span></div>
+        <div class="stat reveal"><span class="stat__num mono" data-count="15">0</span><span class="stat__unit mono">°C</span><span class="stat__label">平均地表溫度</span></div>
+        <div class="stat reveal"><span class="stat__num mono" data-count="9.81" data-decimal="2">0</span><span class="stat__unit mono">M/S²</span><span class="stat__label">表面重力</span></div>
+        <div class="stat reveal"><span class="stat__num mono" data-count="1">0</span><span class="stat__unit mono">顆</span><span class="stat__label">天然衛星</span></div>
+      </div>
+      <div class="calc reveal" data-calc="earth">
+        <p class="kicker mono">PERSONAL FILE · 你的地球檔案</p>
+        <div class="calc__row">
+          <label>體重 <input class="calc__w" type="number" min="1" max="999" placeholder="60" /> KG</label>
+          <label>生日 <input class="calc__b" type="date" /></label>
+        </div>
+        <div class="calc__out"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · 地理奇觀 -->
+  <section class="panel" data-section="2">
+    <div class="content content--right">
+      <p class="kicker mono reveal">02 / GEOGRAPHY</p>
+      <h2 class="reveal">極端地貌</h2>
+      <div class="feature reveal">
+        <h3>聖母峰 <span class="mono feature__tag">MOUNT EVEREST</span></h3>
+        <p>海拔 <strong>8,849 公尺</strong>，板塊碰撞推出的世界之巔——而且它還在以每年約 4 毫米的速度長高。</p>
+      </div>
+      <div class="feature reveal">
+        <h3>馬里亞納海溝 <span class="mono feature__tag">MARIANA TRENCH</span></h3>
+        <p>深達 <strong>10,935 公尺</strong> 的地殼最深處。把聖母峰丟進去，峰頂距離海面還有兩公里。</p>
+      </div>
+      <div class="feature reveal">
+        <h3>亞馬遜雨林 <span class="mono feature__tag">THE AMAZON</span></h3>
+        <p>橫跨九個國家的綠色之肺，容納地球十分之一的物種。一棵樹一天能蒸騰上千公升的水，撐起整片大陸的雨季。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · 生命長卷 -->
+  <section class="panel panel--tall" data-section="3">
+    <div class="content content--left">
+      <p class="kicker mono reveal">03 / 4 BILLION YEARS</p>
+      <h2 class="reveal">生命長卷</h2>
+      <p class="lead reveal">在這顆星球上發生過的故事，比任何科幻都更瘋狂。以下是濃縮成六行的四十億年。</p>
+      <ol class="timeline timeline--epoch">
+        <li class="reveal"><span class="mono timeline__year">38億年前</span><div><h4>第一個細胞 LUCA</h4><p>深海熱泉旁，某個分子學會了複製自己。今天地球上所有生物——包括你——都是它的後代。</p></div></li>
+        <li class="reveal"><span class="mono timeline__year">24億年前</span><div><h4>大氧化事件</h4><p>藍綠菌用光合作用「污染」了大氣。對當時的厭氧生物是滅頂之災，對我們，是每一口呼吸。</p></div></li>
+        <li class="reveal"><span class="mono timeline__year">5.4億年前</span><div><h4>寒武紀大爆發</h4><p>眼睛、外殼、獵食者——演化在地質學的一瞬間，爆出了幾乎所有動物的身體藍圖。</p></div></li>
+        <li class="reveal"><span class="mono timeline__year">6600萬年前</span><div><h4>恐龍滅絕</h4><p>一顆直徑 10 公里的小行星落在猶加敦半島。統治地球 1.6 億年的王朝終結，哺乳類從陰影中走出。</p></div></li>
+        <li class="reveal"><span class="mono timeline__year">700萬年前</span><div><h4>直立行走</h4><p>東非的草原上，有一種猿站了起來。空出來的那雙手，後來造出了石器、文字和太空船。</p></div></li>
+        <li class="reveal"><span class="mono timeline__year">30萬年前</span><div><h4>智人 HOMO SAPIENS</h4><p>會說故事的猿出現了。然後是農耕、城市、網路——以及抬頭問出那句：我們是孤獨的嗎？</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 4 · 藍色引擎 -->
+  <section class="panel" data-section="4">
+    <div class="content content--right">
+      <p class="kicker mono reveal">04 / THE BLUE ENGINE</p>
+      <h2 class="reveal">藍色引擎</h2>
+      <p class="lead reveal">地球的宜居不是運氣，是一套運轉了數十億年的精密系統。</p>
+      <div class="feature reveal">
+        <h3>洋流輸送帶 <span class="mono feature__tag">THE GREAT CONVEYOR</span></h3>
+        <p>一滴海水繞完全球要<strong>一千年</strong>。這條深海輸送帶搬運的熱量，讓高緯度的歐洲不致冰封。</p>
+      </div>
+      <div class="feature reveal">
+        <h3>大氣環流 <span class="mono feature__tag">ATMOSPHERIC CELLS</span></h3>
+        <p>赤道熱空氣上升、極地冷空氣下沉，切出三組環流圈——信風、季風與沙漠的位置，全由它決定。</p>
+      </div>
+      <div class="feature reveal">
+        <h3>碳循環 <span class="mono feature__tag">CARBON CYCLE</span></h3>
+        <p>火山吐碳、岩石吸碳、森林與海洋緩衝——一座維持了數億年的<strong>行星恆溫器</strong>。而我們正在考驗它的極限。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 · 衛星 -->
+  <section class="panel" data-section="5">
+    <div class="content content--center">
+      <p class="kicker mono reveal">05 / THE MOON</p>
+      <h2 class="reveal">月有陰晴圓缺</h2>
+      <p class="lead reveal">地球唯一的天然衛星，<br />也是人類唯一踏足過的外星世界。</p>
+      <div class="moons">
+        <div class="moon-card reveal">
+          <span class="mono moon-card__id">LUNA · 月球</span>
+          <p>直徑 3,474 km——相對母行星而言大得不成比例。它穩住了地球的自轉軸，讓四季得以安穩輪轉，也牽引著每天兩次的潮汐。</p>
+        </div>
+        <div class="moon-card reveal">
+          <span class="mono moon-card__id">TIDAL LOCK · 潮汐鎖定</span>
+          <p>月球永遠以同一面朝向地球，而且正以每年 3.8 公分的速度緩緩遠離——恐龍抬頭看到的月亮，比你今晚看到的更大。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 · 太空時代 -->
+  <section class="panel panel--tall" data-section="6">
+    <div class="content content--left">
+      <p class="kicker mono reveal">06 / SPACE AGE</p>
+      <h2 class="reveal">從這裡出發</h2>
+      <ol class="timeline">
+        <li class="reveal"><span class="mono timeline__year">1957</span><div><h4>史普尼克 1 號 SPUTNIK 1</h4><p>第一顆人造衛星升空，一聲嗶嗶聲宣告太空時代的開始。</p></div></li>
+        <li class="reveal"><span class="mono timeline__year">1961</span><div><h4>加加林 VOSTOK 1</h4><p>第一位進入太空的人類，108 分鐘繞行地球一圈：「地球是藍色的。」</p></div></li>
+        <li class="reveal"><span class="mono timeline__year">1969</span><div><h4>阿波羅 11 號 APOLLO 11</h4><p>人類第一次踏上另一個世界。那雙腳印至今仍留在寧靜海。</p></div></li>
+        <li class="reveal"><span class="mono timeline__year">1990</span><div><h4>暗淡藍點 PALE BLUE DOT</h4><p>航海家 1 號在 64 億公里外回望——地球只是一粒懸浮在陽光中的微塵。</p></div></li>
+        <li class="reveal"><span class="mono timeline__year">2000</span><div><h4>國際太空站 ISS</h4><p>人類開始在軌道上持續駐留，至今一天都未曾間斷。</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 7 · 人類世 -->
+  <section class="panel panel--hero" data-section="7">
+    <div class="hero hero--end">
+      <p class="kicker mono reveal">07 / HOME</p>
+      <h2 class="hero__end-title reveal">目前為止，<br />唯一的家。</h2>
+      <blockquote class="bigquote reveal">「再看看那個光點。它就是這裡。它就是家。它就是我們。所有你愛的人、你認識的人、你聽過的人，每一個曾經存在的人，都在它上面度過了一生。」<cite>CARL SAGAN · 暗淡藍點，1994</cite></blockquote>
+      <p class="hero__sub reveal">我們是這顆星球上第一個能離開它的物種，<br />也是第一個有能力守護它——或失去它的物種。</p>
+      <p class="mono hero__sign reveal">THERE IS NO PLANET B · 好好愛地球</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ================= 月球 ================= -->
+<main id="mainMoon" hidden>
+
+  <!-- 0 · 序章 -->
+  <section class="panel panel--hero" data-section="0">
+    <div class="hero">
+      <p class="hero__eyebrow mono reveal">THE SILVER COMPANION · 距離地球 384,400 KM</p>
+      <h1 class="hero__title">
+        <span class="hero__zh reveal">月球</span>
+        <span class="hero__en reveal" aria-hidden="true">MOON</span>
+      </h1>
+      <p class="hero__sub reveal">四十五億年來，它一直在那裡。<br />拉動潮汐、穩住四季、照亮夜路——<br />也是人類唯一踏足過的另一個世界。</p>
+      <div class="hero__scroll mono reveal">SCROLL TO DESCEND<span class="hero__arrow">↓</span></div>
+    </div>
+  </section>
+
+  <!-- 1 · 檔案 -->
+  <section class="panel" data-section="1">
+    <div class="content content--left">
+      <p class="kicker mono reveal">01 / LUNAR DATA</p>
+      <h2 class="reveal">月球檔案</h2>
+      <p class="lead reveal">月球沒有大氣，沒有風，沒有聲音。腳印一旦留下，能保存上百萬年——那裡的時間，幾乎是靜止的。</p>
+      <div class="stats">
+        <div class="stat reveal"><span class="stat__num mono" data-count="3474">0</span><span class="stat__unit mono">KM</span><span class="stat__label">直徑（地球 27%）</span></div>
+        <div class="stat reveal"><span class="stat__num mono" data-count="27.3" data-decimal="1">0</span><span class="stat__unit mono">天</span><span class="stat__label">繞地球一圈</span></div>
+        <div class="stat reveal"><span class="stat__num mono" data-count="29.5" data-decimal="1">0</span><span class="stat__unit mono">天</span><span class="stat__label">一個月晝（晝夜循環）</span></div>
+        <div class="stat reveal"><span class="stat__num mono" data-count="300">0</span><span class="stat__unit mono">°C</span><span class="stat__label">晝夜溫差（+127 ~ -173）</span></div>
+        <div class="stat reveal"><span class="stat__num mono" data-count="1.62" data-decimal="2">0</span><span class="stat__unit mono">M/S²</span><span class="stat__label">表面重力（地球 1/6）</span></div>
+        <div class="stat reveal"><span class="stat__num mono" data-count="12">0</span><span class="stat__unit mono">人</span><span class="stat__label">曾踏上月面的人類</span></div>
+      </div>
+      <div class="calc reveal" data-calc="moon">
+        <p class="kicker mono">PERSONAL FILE · 你的月球檔案</p>
+        <div class="calc__row">
+          <label>體重 <input class="calc__w" type="number" min="1" max="999" placeholder="60" /> KG</label>
+          <label>生日 <input class="calc__b" type="date" /></label>
+        </div>
+        <div class="calc__out"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · 月相 -->
+  <section class="panel" data-section="2">
+    <div class="content content--center">
+      <p class="kicker mono reveal">02 / PHASES</p>
+      <h2 class="reveal">最古老的曆法</h2>
+      <p class="lead reveal">在文字與曆書出現之前，人類抬頭看月亮數日子。<br />29.5 天的圓缺輪迴，是我們的第一個「月」。</p>
+      <div class="phases reveal">
+        <div class="phase"><div class="phase__disc" style="--ph: 0%"></div><span>新月</span></div>
+        <div class="phase"><div class="phase__disc" style="--ph: 22%"></div><span>蛾眉</span></div>
+        <div class="phase"><div class="phase__disc" style="--ph: 50%"></div><span>上弦</span></div>
+        <div class="phase"><div class="phase__disc" style="--ph: 80%"></div><span>盈凸</span></div>
+        <div class="phase"><div class="phase__disc" style="--ph: 105%"></div><span>滿月</span></div>
+        <div class="phase"><div class="phase__disc" style="--ph: -80%"></div><span>虧凸</span></div>
+        <div class="phase"><div class="phase__disc" style="--ph: -50%"></div><span>下弦</span></div>
+        <div class="phase"><div class="phase__disc" style="--ph: -22%"></div><span>殘月</span></div>
+      </div>
+      <p class="lead reveal" style="margin-bottom: 0;">月相不是地球的影子——<br />是我們從不同的角度，看月球被太陽照亮的那一半。</p>
+    </div>
+  </section>
+
+  <!-- 3 · 地理 -->
+  <section class="panel" data-section="3">
+    <div class="content content--right">
+      <p class="kicker mono reveal">03 / GEOGRAPHY</p>
+      <h2 class="reveal">寂靜地貌</h2>
+      <div class="feature reveal">
+        <h3>寧靜海 <span class="mono feature__tag">MARE TRANQUILLITATIS</span></h3>
+        <p>古老熔岩凝固成的暗色平原。1969 年，<strong>人類的第一個腳印</strong>就落在這裡——「老鷹號已著陸。」</p>
+      </div>
+      <div class="feature reveal">
+        <h3>南極－艾特肯盆地 <span class="mono feature__tag">SOUTH POLE–AITKEN</span></h3>
+        <p>直徑 <strong>2,500 公里</strong>、深 13 公里，太陽系最大的撞擊盆地之一。永久陰影的坑底藏著水冰——未來月球基地的生命線。</p>
+      </div>
+      <div class="feature reveal">
+        <h3>第谷坑 <span class="mono feature__tag">TYCHO</span></h3>
+        <p>一億年前的年輕撞擊坑，濺射出的亮色射紋延伸 <strong>1,500 公里</strong>，滿月時用肉眼就能看見。</p>
+      </div>
+      <div class="feature reveal">
+        <h3>月之背面 <span class="mono feature__tag">FAR SIDE</span></h3>
+        <p>潮汐鎖定讓它永遠背對地球，直到 1959 年月球 3 號才首次拍到：幾乎沒有月海、佈滿撞擊坑。順帶闢謠——背面一樣曬得到太陽，<strong>從來沒有「永遠黑暗的一面」</strong>。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · 1969（故事） -->
+  <section class="panel panel--story" data-section="4">
+    <div class="story reveal">
+      <span class="mono story__label">MISSION FILE · 1969-07-20 · SEA OF TRANQUILITY</span>
+      <h2>1969</h2>
+      <p class="story__quote">「休士頓，這裡是寧靜海基地。老鷹號已著陸。」</p>
+      <p>下降途中，導航電腦連續跳出 1202 警報——手冊上沒人記得這代表什麼。26 歲的後排工程師 Steve Bales 在幾秒內做出判斷，喊出：「GO！」任務繼續。</p>
+      <p>預定著陸點佈滿巨石。阿姆斯壯關掉自動駕駛，手動飄過坑洞尋找平地。當「著陸」燈亮起時，下降燃料估計只剩<strong>約 25 秒</strong>。</p>
+      <p>六個半小時後，他踏下舷梯：「這是一個人的一小步，卻是人類的一大步。」那一晚，全世界六億人抬著頭，看著同一顆月亮。</p>
+    </div>
+  </section>
+
+  <!-- 5 · 探月史 -->
+  <section class="panel panel--tall" data-section="5">
+    <div class="content content--left">
+      <p class="kicker mono reveal">05 / LUNAR MISSIONS</p>
+      <h2 class="reveal">奔月之路</h2>
+      <ol class="timeline">
+        <li class="reveal"><span class="mono timeline__year">1959</span><div><h4>月球 2 號 LUNA 2</h4><p>第一個抵達月面的人造物體——以撞擊的方式，替人類敲了第一次門。</p></div></li>
+        <li class="reveal"><span class="mono timeline__year">1969</span><div><h4>阿波羅 11 號 APOLLO 11</h4><p>「這是一個人的一小步，卻是人類的一大步。」六億人在電視機前屏住呼吸。</p></div></li>
+        <li class="reveal"><span class="mono timeline__year">1970</span><div><h4>阿波羅 13 號 APOLLO 13</h4><p>「休士頓，我們出狀況了。」氧氣槽爆炸後，三名太空人擠進登月艙當救生艇，繞月一圈奇蹟生還——史上最成功的失敗。</p></div></li>
+        <li class="reveal"><span class="mono timeline__year">1972</span><div><h4>阿波羅 17 號 APOLLO 17</h4><p>最後一次載人登月。此後五十多年，再沒有人類離開過近地軌道。</p></div></li>
+        <li class="reveal"><span class="mono timeline__year">2019</span><div><h4>嫦娥四號 CHANG'E 4</h4><p>人類首次在月球背面軟著陸，玉兔二號在無人見過的土地上留下轍痕。</p></div></li>
+        <li class="reveal"><span class="mono timeline__year">2026</span><div><h4>阿提米絲計畫 ARTEMIS</h4><p>NASA 的重返月球計畫——這一次，目標不是插旗，而是留下來。</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 6 · 前哨站 -->
+  <section class="panel panel--hero" data-section="6">
+    <div class="hero hero--end">
+      <p class="kicker mono reveal">06 / OUTPOST</p>
+      <h2 class="hero__end-title reveal">人類的<br />深空前哨站。</h2>
+      <p class="hero__sub reveal">三天的航程、穩定的地基、極區的水冰。<br />前往火星之前，我們會先在這裡學會生活。</p>
+      <p class="mono hero__sign reveal">BACK TO THE MOON · 這次我們會留下來</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ================= 太陽 ================= -->
+<main id="mainSun" hidden>
+
+  <!-- 0 · 序章 -->
+  <section class="panel panel--hero" data-section="0">
+    <div class="hero">
+      <p class="hero__eyebrow mono reveal">THE STAR · 距離地球 8.3 光分</p>
+      <h1 class="hero__title">
+        <span class="hero__zh reveal">太陽</span>
+        <span class="hero__en reveal" aria-hidden="true">SUN</span>
+      </h1>
+      <p class="hero__sub reveal">一顆再普通不過的恆星，<br />卻是這個故事裡所有光、所有能量、所有生命的源頭。<br />你曬到的每一道陽光，都是核融合。</p>
+      <div class="hero__scroll mono reveal">SCROLL TO DESCEND<span class="hero__arrow">↓</span></div>
+    </div>
+  </section>
+
+  <!-- 1 · 恆星檔案 -->
+  <section class="panel" data-section="1">
+    <div class="content content--left">
+      <p class="kicker mono reveal">01 / STELLAR DATA</p>
+      <h2 class="reveal">恆星檔案</h2>
+      <p class="lead reveal">太陽佔了太陽系總質量的 99.86%——嚴格說來，太陽系就是太陽，加上一點可以忽略不計的渣。我們住在渣上。</p>
+      <div class="stats">
+        <div class="stat reveal"><span class="stat__num mono" data-count="1392700">0</span><span class="stat__unit mono">KM</span><span class="stat__label">直徑（地球的 109 倍）</span></div>
+        <div class="stat reveal"><span class="stat__num mono" data-count="5500">0</span><span class="stat__unit mono">°C</span><span class="stat__label">表面溫度（光球層）</span></div>
+        <div class="stat reveal"><span class="stat__num mono" data-count="15000000">0</span><span class="stat__unit mono">°C</span><span class="stat__label">核心溫度</span></div>
+        <div class="stat reveal"><span class="stat__num mono" data-count="99.86" data-decimal="2">0</span><span class="stat__unit mono">%</span><span class="stat__label">佔太陽系總質量</span></div>
+        <div class="stat reveal"><span class="stat__num mono" data-count="46">0</span><span class="stat__unit mono">億年</span><span class="stat__label">年齡（主序帶中年）</span></div>
+        <div class="stat reveal"><span class="stat__num mono" data-count="8.3" data-decimal="1">0</span><span class="stat__unit mono">分鐘</span><span class="stat__label">陽光抵達地球</span></div>
+      </div>
+      <div class="calc reveal" data-calc="sun">
+        <p class="kicker mono">PERSONAL FILE · 你的恆星檔案</p>
+        <div class="calc__row">
+          <label>體重 <input class="calc__w" type="number" min="1" max="999" placeholder="60" /> KG</label>
+          <label>生日 <input class="calc__b" type="date" /></label>
+        </div>
+        <div class="calc__out"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · 從核心到日冕 -->
+  <section class="panel" data-section="2">
+    <div class="content content--right">
+      <p class="kicker mono reveal">02 / ANATOMY</p>
+      <h2 class="reveal">從核心到日冕</h2>
+      <div class="feature reveal">
+        <h3>核心 <span class="mono feature__tag">THE CORE</span></h3>
+        <p>每秒把 <strong>6 億噸</strong>氫融合成氦，少掉的 400 萬噸質量直接變成光。一顆光子要在內部碰撞十幾萬年才能逃到表面——你今天曬到的陽光，出發時人類還在冰河期。</p>
+      </div>
+      <div class="feature reveal">
+        <h3>光球與黑子 <span class="mono feature__tag">PHOTOSPHERE</span></h3>
+        <p>我們「看見」的表面其實是一鍋沸騰的電漿。黑子是磁場打結的地方，只是溫度較低顯得暗——每一顆都<strong>比地球還大</strong>。</p>
+      </div>
+      <div class="feature reveal">
+        <h3>日冕之謎 <span class="mono feature__tag">CORONAL HEATING</span></h3>
+        <p>表面 5,500 度，外圍稀薄的日冕卻高達 <strong>200 萬度</strong>——「離火越遠越熱」的反常謎題，物理學家爭論了八十年仍未完全解開。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · 太陽的脾氣 -->
+  <section class="panel" data-section="3">
+    <div class="content content--left">
+      <p class="kicker mono reveal">03 / SPACE WEATHER</p>
+      <h2 class="reveal">太陽的脾氣</h2>
+      <p class="lead reveal">它不只發光發熱——它會發脾氣。而整個太陽系都在它的射程裡。</p>
+      <div class="feature reveal">
+        <h3>閃焰 <span class="mono feature__tag">SOLAR FLARES</span></h3>
+        <p>磁場斷裂重連的瞬間，相當於<strong>百億顆氫彈</strong>的能量在幾分鐘內釋放。X 射線以光速出發，八分鐘後就打在地球大氣上。</p>
+      </div>
+      <div class="feature reveal">
+        <h3>日冕物質拋射 <span class="mono feature__tag">CME</span></h3>
+        <p>上百億噸電漿被整團甩進太空。正面命中地球磁場，就是地磁風暴——衛星、電網、GPS、航班通訊全都得提防。</p>
+      </div>
+      <div class="feature reveal">
+        <h3>太陽風與極光 <span class="mono feature__tag">SOLAR WIND</span></h3>
+        <p>每秒百萬噸的帶電粒子流，持續吹拂整個太陽系。被地球磁場攔下、導向兩極，撞進大氣——就成了你在地球頁看到的<strong>極光</strong>。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · 1859（故事） -->
+  <section class="panel panel--story" data-section="4">
+    <div class="story reveal">
+      <span class="mono story__label">EVENT FILE · 1859-09-01 · THE CARRINGTON EVENT</span>
+      <h2>1859</h2>
+      <p class="story__quote">「電報機在沒接電池的情況下繼續發報，紙帶燒了起來——而半個地球的夜空亮得能讀報紙。」</p>
+      <p>1859 年 9 月 1 日早晨，英國天文學家卡靈頓正在描繪太陽黑子，突然看見黑子群上方爆出兩道刺眼的白光——這是人類第一次親眼目擊太陽閃焰。</p>
+      <p>17.6 小時後（這段路程通常要走三四天），史上最強的日冕物質拋射正面撞上地球。全球電報網癱瘓、火花四濺，極光一路南壓到加勒比海，礦工以為天亮了起床做早餐。</p>
+      <p>如果同等級的風暴擊中今天這個掛滿衛星、佈滿電網的世界，損失估計以<strong>兆美元</strong>計。天文學家說：這不是「會不會」的問題，是「什麼時候」。</p>
+    </div>
+  </section>
+
+  <!-- 5 · 觀測史 -->
+  <section class="panel panel--tall" data-section="5">
+    <div class="content content--left">
+      <p class="kicker mono reveal">05 / OBSERVATIONS</p>
+      <h2 class="reveal">凝視太陽</h2>
+      <ol class="timeline">
+        <li class="reveal"><span class="mono timeline__year">1610</span><div><h4>伽利略 GALILEO</h4><p>用望遠鏡投影描下太陽黑子——「天體完美無瑕」的千年神話，從此破滅。</p></div></li>
+        <li class="reveal"><span class="mono timeline__year">1859</span><div><h4>卡靈頓事件 CARRINGTON</h4><p>人類首次目擊閃焰，也首次嘗到太陽風暴的威力。太空天氣學從這一天誕生。</p></div></li>
+        <li class="reveal"><span class="mono timeline__year">1995</span><div><h4>SOHO 太陽觀測站</h4><p>三十年來 24 小時盯著太陽的哨兵——順便成了史上最強的彗星獵人，發現超過 5,000 顆。</p></div></li>
+        <li class="reveal"><span class="mono timeline__year">2018</span><div><h4>帕克太陽探測器 PARKER</h4><p>人類最快的人造物，時速 69 萬公里。任務名稱很直白：去觸摸太陽。</p></div></li>
+        <li class="reveal"><span class="mono timeline__year">2021</span><div><h4>穿越日冕 TOUCHING THE SUN</h4><p>帕克號首次飛進日冕並全身而退——人類製造的東西，第一次「進入」了一顆恆星。</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 6 · 命運 -->
+  <section class="panel panel--hero" data-section="6">
+    <div class="hero hero--end">
+      <p class="kicker mono reveal">06 / DESTINY</p>
+      <h2 class="hero__end-title reveal">一切光的<br />源頭。</h2>
+      <p class="hero__sub reveal">50 億年後，它會膨脹成紅巨星，吞下水星與金星，<br />最後安靜地縮成一顆白矮星，慢慢冷卻、熄滅。<br />在那之前——每一片葉子、每一度電、每一個你，都由它供能。</p>
+      <p class="mono hero__sign reveal">OUR STAR · 記得防曬</p>
+    </div>
+  </section>
+
+</main>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* ================================================================
+   MARS — 火星 · 滾動驅動的 3D 場景
+   程序化 shader 火星 + 大氣光暈 + 星空 + 雙衛星
+   ================================================================ */
+
+const canvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x020104);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 0, 4.2);
+
+const SUN_DIR = new THREE.Vector3(-2.2, 0.8, 2.5).normalize();
+
+/* ---------------- GLSL noise（fbm 共用） ---------------- */
+const NOISE_GLSL = /* glsl */ `
+  float hash(vec3 p) {
+    p = fract(p * 0.3183099 + 0.1);
+    p *= 17.0;
+    return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+  }
+  float noise(vec3 x) {
+    vec3 i = floor(x);
+    vec3 f = fract(x);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(
+      mix(mix(hash(i + vec3(0,0,0)), hash(i + vec3(1,0,0)), f.x),
+          mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
+      mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x),
+          mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y),
+      f.z);
+  }
+  float fbm(vec3 p) {
+    float v = 0.0, a = 0.5;
+    for (int i = 0; i < 5; i++) {
+      v += a * noise(p);
+      p = p * 2.07 + vec3(7.3);
+      a *= 0.5;
+    }
+    return v;
+  }
+  float ridged(vec3 p) {
+    return 1.0 - abs(2.0 * fbm(p) - 1.0);
+  }
+`;
+
+/* ---------------- 各星球地形高度函式（頂點位移與法線微擾共用） ---------------- */
+const MARS_SURF = /* glsl */ `
+  float surfH(vec3 p) {
+    float c = fbm(p * 3.0);
+    float d = fbm(p * 9.0 + 13.7);
+    float cr = ridged(p * 6.5 + 4.2);
+    return c * 0.6 + d * 0.3 + cr * 0.1;
+  }
+`;
+const EARTH_SURF = /* glsl */ `
+  float surfH(vec3 p) {
+    float c = fbm(p * 2.6);
+    float d = fbm(p * 7.0 + 19.3);
+    return smoothstep(0.52, 0.95, c * 0.7 + d * 0.3) * 0.9;
+  }
+`;
+const MOON_SURF = /* glsl */ `
+  float surfH(vec3 p) {
+    float b = fbm(p * 4.0);
+    float c1 = ridged(p * 7.0 + 2.3);
+    float c2 = ridged(p * 16.0 + 11.0);
+    return b * 0.45 + c1 * 0.35 + c2 * 0.2;
+  }
+`;
+
+// 共用頂點 shader：依高度函式把頂點沿法線位移，星球輪廓不再是完美圓球
+function makeVertex(surfGLSL, amp) {
+  return /* glsl */ `
+    varying vec3 vPos;
+    varying vec3 vWorldNormal;
+    varying vec3 vWorldPos;
+    ${NOISE_GLSL}
+    ${surfGLSL}
+    void main() {
+      vPos = position;
+      vec3 dir = normalize(position);
+      vec3 displaced = position * (1.0 + (surfH(dir) - 0.5) * ${amp.toFixed(3)});
+      vWorldNormal = normalize(mat3(modelMatrix) * normal);
+      vWorldPos = (modelMatrix * vec4(displaced, 1.0)).xyz;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);
+    }
+  `;
+}
+
+// 共用法線微擾 GLSL：取樣高度梯度，讓地形有真實光影（modelMatrix 不能用於 fragment，
+// 改在世界空間重建切線——星球只繞 Y 軸自轉，兩組切線框架一致）
+function bumpGLSL(strength) {
+  return /* glsl */ `
+      float eps = 0.014;
+      vec3 tg = normalize(cross(p, vec3(0.0, 1.0, 0.0)) + vec3(1e-4));
+      vec3 bt = cross(p, tg);
+      float h0 = surfH(p);
+      float dT = h0 - surfH(normalize(p + tg * eps));
+      float dB = h0 - surfH(normalize(p + bt * eps));
+      vec3 nb = normalize(vWorldNormal);
+      vec3 tgw = normalize(cross(nb, vec3(0.0, 1.0, 0.0)) + vec3(1e-4));
+      vec3 btw = cross(nb, tgw);
+      vec3 n = normalize(nb + (tgw * dT + btw * dB) * ${strength.toFixed(1)});
+  `;
+}
+
+/* ---------------- 火星本體（程序化表面） ---------------- */
+const marsGroup = new THREE.Group();
+scene.add(marsGroup);
+
+const marsMat = new THREE.ShaderMaterial({
+  uniforms: {
+    uLightDir: { value: SUN_DIR },
+    uTime: { value: 0 },
+  },
+  vertexShader: makeVertex(MARS_SURF, 0.05),
+  fragmentShader: /* glsl */ `
+    uniform vec3 uLightDir;
+    varying vec3 vPos;
+    varying vec3 vWorldNormal;
+    varying vec3 vWorldPos;
+    ${NOISE_GLSL}
+    ${MARS_SURF}
+    void main() {
+      vec3 p = normalize(vPos);
+
+      // 多層地形噪聲
+      float continents = fbm(p * 3.0);
+      float detail = fbm(p * 9.0 + 13.7);
+      float craters = ridged(p * 6.5 + 4.2);
+      float h = continents * 0.6 + detail * 0.3 + craters * 0.1;
+
+      // 火星色階：暗鏽 → 鏽紅 → 沙橙 → 亮塵
+      vec3 darkRust  = vec3(0.28, 0.10, 0.06);
+      vec3 rust      = vec3(0.55, 0.22, 0.10);
+      vec3 sand      = vec3(0.80, 0.45, 0.22);
+      vec3 highlight = vec3(0.93, 0.66, 0.42);
+      vec3 col = mix(darkRust, rust, smoothstep(0.2, 0.55, h));
+      col = mix(col, sand, smoothstep(0.5, 0.78, h));
+      col = mix(col, highlight, smoothstep(0.78, 0.95, h));
+
+      // 暗色低地（類似大瑟提斯高原的玄武岩區）
+      float maria = smoothstep(0.62, 0.75, fbm(p * 2.2 + 31.0));
+      col = mix(col, vec3(0.20, 0.09, 0.06), maria * 0.55);
+
+      // 水手號峽谷：赤道附近的暗色裂痕
+      float band = exp(-pow(p.y * 6.0 + sin(p.x * 4.0) * 0.4, 2.0));
+      float canyon = band * smoothstep(0.45, 0.7, fbm(p * 8.0 + 55.0));
+      col = mix(col, vec3(0.16, 0.06, 0.04), canyon * 0.6);
+
+      // 極地冰冠（含噪聲邊緣）
+      float capEdge = 0.86 + fbm(p * 7.0) * 0.09;
+      float cap = smoothstep(capEdge, capEdge + 0.05, abs(p.y));
+      col = mix(col, vec3(0.95, 0.93, 0.90), cap);
+
+      // 地形法線微擾 + 光照
+      ${bumpGLSL(5.0)}
+      float diff = dot(n, normalize(uLightDir));
+      float light = clamp(diff * 0.85 + 0.15, 0.0, 1.0);
+      light = pow(light, 1.3);
+
+      // 晨昏線附近染上暖色
+      float terminator = smoothstep(-0.25, 0.25, diff) * (1.0 - smoothstep(0.25, 0.7, diff));
+      col += vec3(0.35, 0.12, 0.03) * terminator * 0.6;
+
+      // 邊緣大氣散射
+      vec3 viewDir = normalize(cameraPosition - vWorldPos);
+      float fresnel = pow(1.0 - clamp(dot(n, viewDir), 0.0, 1.0), 2.5);
+      col += vec3(1.0, 0.45, 0.2) * fresnel * 0.35 * light;
+
+      gl_FragColor = vec4(col * light, 1.0);
+    }
+  `,
+});
+const mars = new THREE.Mesh(new THREE.SphereGeometry(1, 128, 128), marsMat);
+marsGroup.add(mars);
+
+/* ---------------- 大氣層光暈 ---------------- */
+const atmosMat = new THREE.ShaderMaterial({
+  uniforms: {
+    uLightDir: { value: SUN_DIR },
+    uColLow: { value: new THREE.Color(1.0, 0.30, 0.12) },
+    uColHigh: { value: new THREE.Color(1.0, 0.65, 0.35) },
+  },
+  vertexShader: /* glsl */ `
+    varying vec3 vWorldNormal;
+    varying vec3 vWorldPos;
+    void main() {
+      vWorldNormal = normalize(mat3(modelMatrix) * normal);
+      vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: /* glsl */ `
+    uniform vec3 uLightDir;
+    uniform vec3 uColLow;
+    uniform vec3 uColHigh;
+    varying vec3 vWorldNormal;
+    varying vec3 vWorldPos;
+    void main() {
+      vec3 viewDir = normalize(cameraPosition - vWorldPos);
+      float rim = pow(1.0 - abs(dot(vWorldNormal, viewDir)), 3.0);
+      float sun = clamp(dot(vWorldNormal, normalize(uLightDir)) * 0.6 + 0.4, 0.0, 1.0);
+      vec3 col = mix(uColLow, uColHigh, sun);
+      gl_FragColor = vec4(col, rim * sun * 0.65);
+    }
+  `,
+  transparent: true,
+  blending: THREE.AdditiveBlending,
+  side: THREE.BackSide,
+  depthWrite: false,
+});
+const atmosphere = new THREE.Mesh(new THREE.SphereGeometry(1.18, 64, 64), atmosMat);
+marsGroup.add(atmosphere);
+
+/* ---------------- 沙塵流動層 ---------------- */
+const dustMat = new THREE.ShaderMaterial({
+  uniforms: { uTime: { value: 0 }, uLightDir: { value: SUN_DIR } },
+  vertexShader: /* glsl */ `
+    varying vec3 vPos;
+    varying vec3 vWorldNormal;
+    void main() {
+      vPos = position;
+      vWorldNormal = normalize(mat3(modelMatrix) * normal);
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: /* glsl */ `
+    uniform float uTime;
+    uniform vec3 uLightDir;
+    varying vec3 vPos;
+    varying vec3 vWorldNormal;
+    ${NOISE_GLSL}
+    void main() {
+      vec3 p = normalize(vPos);
+      float storm = fbm(p * 4.0 + vec3(uTime * 0.02, 0.0, uTime * 0.013));
+      float alpha = smoothstep(0.62, 0.85, storm) * 0.18;
+      float light = clamp(dot(vWorldNormal, normalize(uLightDir)) * 0.85 + 0.15, 0.0, 1.0);
+      gl_FragColor = vec4(vec3(0.95, 0.62, 0.38) * light, alpha * light);
+    }
+  `,
+  transparent: true,
+  depthWrite: false,
+});
+const dustLayer = new THREE.Mesh(new THREE.SphereGeometry(1.045, 96, 96), dustMat);
+marsGroup.add(dustLayer);
+
+/* ---------------- 地球表面（程序化：海洋、大陸、夜面城市燈光） ---------------- */
+const earthMat = new THREE.ShaderMaterial({
+  uniforms: {
+    uLightDir: { value: SUN_DIR },
+    uTime: { value: 0 },
+  },
+  vertexShader: makeVertex(EARTH_SURF, 0.05),
+  fragmentShader: /* glsl */ `
+    uniform vec3 uLightDir;
+    varying vec3 vPos;
+    varying vec3 vWorldNormal;
+    varying vec3 vWorldPos;
+    ${NOISE_GLSL}
+    ${EARTH_SURF}
+    void main() {
+      vec3 p = normalize(vPos);
+
+      // 大陸與細節
+      float continents = fbm(p * 2.6);
+      float detail = fbm(p * 7.0 + 19.3);
+      float h = continents * 0.7 + detail * 0.3;
+      float land = smoothstep(0.52, 0.56, h);
+
+      // 海洋：深海 → 近岸淺藍
+      vec3 deepSea = vec3(0.012, 0.07, 0.18);
+      vec3 shallow = vec3(0.03, 0.18, 0.36);
+      vec3 oceanCol = mix(deepSea, shallow, smoothstep(0.38, 0.52, h));
+
+      // 陸地生態帶：赤道雨林 → 溫帶森林 → 針葉林 → 苔原（依緯度分布）
+      float lat = abs(p.y);
+      vec3 lowland = vec3(0.06, 0.23, 0.08);
+      lowland = mix(lowland, vec3(0.12, 0.30, 0.11), smoothstep(0.18, 0.45, lat));
+      lowland = mix(lowland, vec3(0.15, 0.27, 0.15), smoothstep(0.45, 0.68, lat));
+      lowland = mix(lowland, vec3(0.40, 0.38, 0.28), smoothstep(0.68, 0.80, lat));
+      // 副熱帶沙漠帶（撒哈拉緯度）
+      float desert = smoothstep(0.12, 0.30, lat) * (1.0 - smoothstep(0.30, 0.45, lat))
+                   * smoothstep(0.45, 0.70, fbm(p * 3.3 + 77.0));
+      lowland = mix(lowland, vec3(0.55, 0.45, 0.25), desert * 0.85);
+      vec3 dryland = vec3(0.42, 0.35, 0.17);
+      vec3 rock    = vec3(0.34, 0.29, 0.23);
+      vec3 landCol = mix(lowland, dryland, smoothstep(0.60, 0.78, h));
+      landCol = mix(landCol, rock, smoothstep(0.74, 0.86, h));
+
+      vec3 col = mix(oceanCol, landCol, land);
+
+      // 高山雪線 + 極地冰冠
+      float capEdge = 0.82 + fbm(p * 6.0) * 0.08;
+      float cap = smoothstep(capEdge, capEdge + 0.05, abs(p.y));
+      float snow = clamp(smoothstep(0.84, 0.92, h) * land + cap, 0.0, 1.0);
+      col = mix(col, vec3(0.93, 0.95, 0.97), snow);
+
+      // 地形法線微擾 + 光照
+      ${bumpGLSL(4.5)}
+      float diff = dot(n, normalize(uLightDir));
+      float light = clamp(diff * 0.85 + 0.15, 0.0, 1.0);
+      light = pow(light, 1.2);
+
+      // 海面太陽反光
+      vec3 viewDir = normalize(cameraPosition - vWorldPos);
+      vec3 refl = reflect(-normalize(uLightDir), n);
+      float spec = pow(clamp(dot(refl, viewDir), 0.0, 1.0), 28.0) * (1.0 - land) * 0.8;
+
+      vec3 lit = col * light + vec3(1.0, 0.9, 0.65) * spec * light;
+
+      // 夜面城市燈光
+      float nightMask = smoothstep(0.1, -0.25, diff);
+      float city = smoothstep(0.86, 0.98, noise(p * 55.0)) * land * (1.0 - snow) * nightMask;
+      lit += vec3(1.0, 0.78, 0.45) * city * 1.3;
+
+      // 藍色大氣邊緣散射
+      float fresnel = pow(1.0 - clamp(dot(n, viewDir), 0.0, 1.0), 2.5);
+      lit += vec3(0.30, 0.60, 1.0) * fresnel * 0.4 * max(light, 0.15);
+
+      gl_FragColor = vec4(lit, 1.0);
+    }
+  `,
+});
+
+/* ---------------- 地球雲層 ---------------- */
+const cloudsMat = new THREE.ShaderMaterial({
+  uniforms: { uTime: { value: 0 }, uLightDir: { value: SUN_DIR } },
+  vertexShader: dustMat.vertexShader,
+  fragmentShader: /* glsl */ `
+    uniform float uTime;
+    uniform vec3 uLightDir;
+    varying vec3 vPos;
+    varying vec3 vWorldNormal;
+    ${NOISE_GLSL}
+    void main() {
+      vec3 p = normalize(vPos);
+      float clouds = fbm(p * 3.5 + vec3(uTime * 0.018, 0.0, uTime * 0.011));
+      clouds += fbm(p * 9.0 - vec3(uTime * 0.01)) * 0.3;
+      float alpha = smoothstep(0.55, 0.85, clouds) * 0.5;
+      float light = clamp(dot(vWorldNormal, normalize(uLightDir)) * 0.85 + 0.15, 0.0, 1.0);
+      gl_FragColor = vec4(vec3(1.0) * light, alpha * light);
+    }
+  `,
+  transparent: true,
+  depthWrite: false,
+});
+
+/* ---------------- 月球表面（無大氣的銳利光影 + 撞擊坑 + 月海） ---------------- */
+const moonMat = new THREE.ShaderMaterial({
+  uniforms: { uLightDir: { value: SUN_DIR } },
+  vertexShader: makeVertex(MOON_SURF, 0.045),
+  fragmentShader: /* glsl */ `
+    uniform vec3 uLightDir;
+    varying vec3 vPos;
+    varying vec3 vWorldNormal;
+    varying vec3 vWorldPos;
+    ${NOISE_GLSL}
+    ${MOON_SURF}
+    void main() {
+      vec3 p = normalize(vPos);
+
+      // 多層撞擊地形
+      float base = fbm(p * 4.0);
+      float fine = fbm(p * 12.0 + 7.7);
+      float craters = ridged(p * 7.0 + 2.3);
+      float craters2 = ridged(p * 16.0 + 11.0);
+      float h = base * 0.45 + fine * 0.2 + craters * 0.25 + craters2 * 0.1;
+
+      // 灰階色階
+      vec3 dark = vec3(0.16, 0.16, 0.17);
+      vec3 mid  = vec3(0.38, 0.38, 0.40);
+      vec3 lite = vec3(0.63, 0.63, 0.66);
+      vec3 col = mix(dark, mid, smoothstep(0.25, 0.6, h));
+      col = mix(col, lite, smoothstep(0.6, 0.85, h));
+
+      // 月海：大片暗色玄武岩平原
+      float maria = smoothstep(0.58, 0.72, fbm(p * 1.8 + 23.0));
+      col = mix(col, vec3(0.13, 0.13, 0.15), maria * 0.65);
+
+      // 年輕撞擊坑的亮色射紋（克制：只留少數亮紋）
+      float rays = smoothstep(0.965, 1.0, ridged(p * 5.0 + 41.0)) * (1.0 - maria);
+      col += vec3(0.10) * rays;
+
+      // 地形法線微擾；無大氣 → 光影對比銳利、晨昏線乾脆
+      ${bumpGLSL(5.5)}
+      float diff = dot(n, normalize(uLightDir));
+      float light = clamp(diff * 0.92 + 0.08, 0.0, 1.0);
+      light = pow(light, 1.6);
+
+      vec3 lit = col * light;
+
+      // 地照：夜面被地球反光染上微微的藍
+      float nightMask = smoothstep(0.05, -0.3, diff);
+      lit += col * vec3(0.35, 0.45, 0.68) * nightMask * 0.22;
+
+      gl_FragColor = vec4(lit, 1.0);
+    }
+  `,
+});
+
+/* ---------------- 太陽表面（自發光沸騰電漿 + 黑子 + 臨邊昏暗） ---------------- */
+const SUN_SURF = /* glsl */ `
+  float surfH(vec3 p) {
+    return fbm(p * 5.0);
+  }
+`;
+const sunMat = new THREE.ShaderMaterial({
+  uniforms: { uTime: { value: 0 } },
+  vertexShader: makeVertex(SUN_SURF, 0.015),
+  fragmentShader: /* glsl */ `
+    uniform float uTime;
+    varying vec3 vPos;
+    varying vec3 vWorldNormal;
+    varying vec3 vWorldPos;
+    ${NOISE_GLSL}
+    void main() {
+      vec3 p = normalize(vPos);
+
+      // 多尺度對流胞：沸騰的電漿
+      float g1 = fbm(p * 4.0 + vec3(uTime * 0.05, uTime * 0.03, 0.0));
+      float g2 = fbm(p * 12.0 - vec3(0.0, uTime * 0.06, uTime * 0.04));
+      float g3 = fbm(p * 28.0 + vec3(uTime * 0.1));
+      float plasma = g1 * 0.5 + g2 * 0.32 + g3 * 0.18;
+
+      vec3 deep   = vec3(0.55, 0.12, 0.01);
+      vec3 hot    = vec3(1.00, 0.45, 0.05);
+      vec3 bright = vec3(1.00, 0.85, 0.45);
+      vec3 white  = vec3(1.00, 0.98, 0.88);
+      vec3 col = mix(deep, hot, smoothstep(0.25, 0.50, plasma));
+      col = mix(col, bright, smoothstep(0.50, 0.75, plasma));
+      col = mix(col, white, smoothstep(0.78, 0.95, plasma));
+
+      // 太陽黑子：磁場打結處（集中在中低緯度帶）
+      float spotBand = exp(-pow(abs(p.y) * 3.2 - 0.9, 2.0));
+      float spots = smoothstep(0.68, 0.80, fbm(p * 5.5 + 31.0 + uTime * 0.01)) * spotBand;
+      col = mix(col, vec3(0.25, 0.08, 0.01), spots * 0.85);
+
+      // 臨邊昏暗（真實恆星邊緣較暗）+ 色球層橘紅邊光
+      vec3 viewDir = normalize(cameraPosition - vWorldPos);
+      float mu = clamp(dot(normalize(vWorldNormal), viewDir), 0.0, 1.0);
+      col *= 0.55 + 0.45 * pow(mu, 0.6);
+      col += vec3(1.0, 0.3, 0.05) * pow(1.0 - mu, 3.0) * 0.8;
+
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `,
+});
+
+/* ---------------- 雙衛星：Phobos & Deimos ---------------- */
+function makeMoon(radius, seed) {
+  const geo = new THREE.IcosahedronGeometry(radius, 3);
+  const pos = geo.attributes.position;
+  const v = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    const n = Math.sin(v.x * 9 + seed) * Math.cos(v.y * 7 + seed) * Math.sin(v.z * 8 + seed * 2);
+    v.multiplyScalar(1 + n * 0.22);
+    pos.setXYZ(i, v.x, v.y, v.z);
+  }
+  geo.computeVertexNormals();
+  return new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x8a7468, roughness: 0.95 }));
+}
+
+const phobosPivot = new THREE.Group();
+const deimosPivot = new THREE.Group();
+phobosPivot.rotation.x = 0.18;
+deimosPivot.rotation.x = -0.28;
+marsGroup.add(phobosPivot, deimosPivot);
+
+const phobos = makeMoon(0.045, 3.7);
+phobos.position.set(1.85, 0, 0);
+phobosPivot.add(phobos);
+
+const deimos = makeMoon(0.028, 9.1);
+deimos.position.set(2.6, 0, 0);
+deimosPivot.add(deimos);
+
+// 軌道虛線環
+function makeOrbitRing(r, tiltX) {
+  const pts = [];
+  for (let i = 0; i <= 128; i++) {
+    const a = (i / 128) * Math.PI * 2;
+    pts.push(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r));
+  }
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  const ring = new THREE.Line(geo, new THREE.LineBasicMaterial({
+    color: 0xff7a4a, transparent: true, opacity: 0.16,
+  }));
+  ring.rotation.x = tiltX;
+  return ring;
+}
+const ringPhobos = makeOrbitRing(1.85, 0.18);
+const ringDeimos = makeOrbitRing(2.6, -0.28);
+marsGroup.add(ringPhobos, ringDeimos);
+
+/* ---------------- 月球（地球模式） ---------------- */
+const lunaPivot = new THREE.Group();
+lunaPivot.rotation.x = 0.1;
+marsGroup.add(lunaPivot);
+
+const luna = new THREE.Mesh(
+  new THREE.SphereGeometry(0.13, 48, 48),
+  new THREE.MeshStandardMaterial({ color: 0xb8b4ae, roughness: 0.97 })
+);
+luna.position.set(2.3, 0, 0);
+lunaPivot.add(luna);
+
+const ringLuna = makeOrbitRing(2.3, 0.1);
+lunaPivot.visible = ringLuna.visible = false;
+marsGroup.add(ringLuna);
+
+/* ---------------- 迷你地球（月球模式：遠方的藍色家園） ---------------- */
+const earthMiniPivot = new THREE.Group();
+earthMiniPivot.rotation.x = 0.15;
+marsGroup.add(earthMiniPivot);
+
+const earthMini = new THREE.Mesh(new THREE.SphereGeometry(0.18, 48, 48), earthMat);
+earthMini.position.set(2.5, 0, 0);
+earthMiniPivot.add(earthMini);
+
+const ringEarthMini = makeOrbitRing(2.5, 0.15);
+earthMiniPivot.visible = ringEarthMini.visible = false;
+marsGroup.add(ringEarthMini);
+
+/* ================================================================
+   星球專屬 3D 效果
+   ================================================================ */
+
+/* ---- 火星：沙塵暴粒子帶 + 軌道探測器 + 流星 ---- */
+const marsFX = new THREE.Group();
+marsGroup.add(marsFX);
+
+const stormGeo = new THREE.BufferGeometry();
+{
+  const n = 500, pos = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const r = 1.06 + Math.random() * 0.09;
+    const y = (Math.random() - 0.5) * 0.55;
+    pos.set([Math.cos(a) * r, y, Math.sin(a) * r], i * 3);
+  }
+  stormGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+}
+const storm = new THREE.Points(stormGeo, new THREE.PointsMaterial({
+  color: 0xff9a5c, size: 0.016, transparent: true, opacity: 0.5,
+  sizeAttenuation: true, depthWrite: false,
+}));
+marsFX.add(storm);
+
+// low-poly 軌道探測器（衛星本體 + 太陽能板）
+const probePivot = new THREE.Group();
+probePivot.rotation.z = 0.45;
+marsFX.add(probePivot);
+const probe = new THREE.Group();
+const probeBody = new THREE.Mesh(
+  new THREE.BoxGeometry(0.035, 0.035, 0.06),
+  new THREE.MeshStandardMaterial({ color: 0xd8d2c8, roughness: 0.5, metalness: 0.4 })
+);
+const panelMat = new THREE.MeshStandardMaterial({ color: 0x2a4f9a, roughness: 0.35, metalness: 0.6, side: THREE.DoubleSide });
+const panelL = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.035), panelMat);
+const panelR = panelL.clone();
+panelL.position.x = -0.08;
+panelR.position.x = 0.08;
+probe.add(probeBody, panelL, panelR);
+probe.position.set(1.62, 0, 0);
+probePivot.add(probe);
+
+// 流星（世界座標，不跟著行星移動）
+const meteorGeo = new THREE.BufferGeometry().setFromPoints([
+  new THREE.Vector3(0, 0, 0), new THREE.Vector3(0.5, -0.12, 0),
+]);
+const meteorMat = new THREE.LineBasicMaterial({
+  color: 0xffd9a8, transparent: true, opacity: 0, blending: THREE.AdditiveBlending,
+});
+const meteor = new THREE.Line(meteorGeo, meteorMat);
+scene.add(meteor);
+
+/* ---- 地球：極光 + 人造衛星群 ---- */
+const earthFX = new THREE.Group();
+earthFX.visible = false;
+marsGroup.add(earthFX);
+
+const auroraMat = new THREE.ShaderMaterial({
+  uniforms: { uTime: { value: 0 } },
+  vertexShader: /* glsl */ `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: /* glsl */ `
+    uniform float uTime;
+    varying vec2 vUv;
+    ${NOISE_GLSL}
+    void main() {
+      float wave = fbm(vec3(vUv.x * 9.0, uTime * 0.25, vUv.y * 2.0));
+      float band = smoothstep(0.0, 0.35, vUv.y) * (1.0 - smoothstep(0.55, 1.0, vUv.y));
+      float a = band * smoothstep(0.42, 0.75, wave) * 0.7;
+      vec3 col = mix(vec3(0.15, 1.0, 0.55), vec3(0.25, 0.55, 1.0), vUv.y);
+      gl_FragColor = vec4(col, a);
+    }
+  `,
+  transparent: true,
+  blending: THREE.AdditiveBlending,
+  side: THREE.DoubleSide,
+  depthWrite: false,
+});
+const auroraN = new THREE.Mesh(new THREE.CylinderGeometry(0.40, 0.52, 0.22, 64, 1, true), auroraMat);
+auroraN.position.y = 0.97;
+const auroraS = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.40, 0.22, 64, 1, true), auroraMat);
+auroraS.position.y = -0.97;
+earthFX.add(auroraN, auroraS);
+
+// 人造衛星群（近地軌道的光點）
+const satGeo = new THREE.BufferGeometry();
+{
+  const n = 28, pos = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const v = new THREE.Vector3().randomDirection().multiplyScalar(1.28 + Math.random() * 0.3);
+    pos.set([v.x, v.y, v.z], i * 3);
+  }
+  satGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+}
+const sats = new THREE.Points(satGeo, new THREE.PointsMaterial({
+  color: 0xcfe4ff, size: 0.02, transparent: true, opacity: 0.9,
+  sizeAttenuation: true, depthWrite: false,
+}));
+earthFX.add(sats);
+
+/* ---- 月球：阿波羅著陸點標記（脈衝光點） ---- */
+const moonFX = new THREE.Group();
+moonFX.visible = false;
+marsGroup.add(moonFX);
+
+const apolloSites = [
+  [0.18, 0.05, 0.98], [-0.32, -0.12, 0.94], [0.02, -0.30, 0.95],
+  [0.38, 0.22, 0.90], [-0.12, 0.35, 0.93], [-0.42, 0.02, 0.90],
+];
+const apGeo = new THREE.BufferGeometry();
+apGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(
+  apolloSites.flatMap((v) => {
+    const n = new THREE.Vector3(...v).normalize().multiplyScalar(1.05);
+    return [n.x, n.y, n.z];
+  })
+), 3));
+const apollo = new THREE.Points(apGeo, new THREE.PointsMaterial({
+  color: 0xbfe0ff, size: 0.05, transparent: true, opacity: 0.9,
+  blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true,
+}));
+moonFX.add(apollo);
+
+/* ---- 太陽：動態日冕 + 日珥粒子 + 內行星系統 ---- */
+const sunFX = new THREE.Group();
+sunFX.visible = false;
+marsGroup.add(sunFX);
+
+// 日冕：大型動態光暈殼
+const coronaMat = new THREE.ShaderMaterial({
+  uniforms: { uTime: { value: 0 } },
+  vertexShader: /* glsl */ `
+    varying vec3 vPos;
+    varying vec3 vWorldNormal;
+    varying vec3 vWorldPos;
+    void main() {
+      vPos = position;
+      vWorldNormal = normalize(mat3(modelMatrix) * normal);
+      vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: /* glsl */ `
+    uniform float uTime;
+    varying vec3 vPos;
+    varying vec3 vWorldNormal;
+    varying vec3 vWorldPos;
+    ${NOISE_GLSL}
+    void main() {
+      vec3 viewDir = normalize(cameraPosition - vWorldPos);
+      float rim = pow(1.0 - abs(dot(normalize(vWorldNormal), viewDir)), 2.0);
+      float wisp = fbm(normalize(vPos) * 2.5 + vec3(0.0, uTime * 0.04, uTime * 0.02));
+      vec3 col = mix(vec3(1.0, 0.55, 0.15), vec3(1.0, 0.85, 0.50), wisp);
+      gl_FragColor = vec4(col, rim * (0.30 + wisp * 0.45));
+    }
+  `,
+  transparent: true,
+  blending: THREE.AdditiveBlending,
+  side: THREE.BackSide,
+  depthWrite: false,
+});
+const corona = new THREE.Mesh(new THREE.SphereGeometry(1.55, 64, 64), coronaMat);
+sunFX.add(corona);
+
+// 日珥粒子：貼著表面翻騰的火舌
+const promGeo = new THREE.BufferGeometry();
+{
+  const n = 260, pos = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const v = new THREE.Vector3().randomDirection().multiplyScalar(1.06 + Math.random() * 0.22);
+    pos.set([v.x, v.y, v.z], i * 3);
+  }
+  promGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+}
+const prominence = new THREE.Points(promGeo, new THREE.PointsMaterial({
+  color: 0xff8a2a, size: 0.028, transparent: true, opacity: 0.6,
+  blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true,
+}));
+sunFX.add(prominence);
+
+// 中心點光源：照亮環繞的內行星
+sunFX.add(new THREE.PointLight(0xffd9a0, 3.5, 12));
+
+// 內行星系統：水星、金星、地球、火星
+const planetDefs = [
+  { name: '水星', r: 1.75, size: 0.030, speed: 0.50, tilt: 0.10, color: 0x9a938c },
+  { name: '金星', r: 2.05, size: 0.050, speed: 0.36, tilt: -0.14, color: 0xd9b27c },
+  { name: '地球', r: 2.40, size: 0.055, speed: 0.26, tilt: 0.05, color: 0x4a7fd4 },
+  { name: '火星', r: 2.75, size: 0.040, speed: 0.20, tilt: -0.08, color: 0xb35a33 },
+];
+const planetPivots = planetDefs.map((def, i) => {
+  const pivot = new THREE.Group();
+  pivot.rotation.x = def.tilt;
+  pivot.rotation.y = i * 1.7;
+  const body = new THREE.Mesh(
+    new THREE.SphereGeometry(def.size, 32, 32),
+    new THREE.MeshStandardMaterial({ color: def.color, roughness: 0.85 })
+  );
+  body.position.set(def.r, 0, 0);
+  pivot.add(body);
+  sunFX.add(pivot, makeOrbitRing(def.r, def.tilt));
+  return { pivot, speed: def.speed };
+});
+
+/* ================================================================
+   太陽系首頁：完整太陽系
+   ================================================================ */
+const solarGroup = new THREE.Group();
+solarGroup.visible = false;
+scene.add(solarGroup);
+
+// 行星共用 shader：光永遠來自中心的太陽
+function makeSolarMat(colorGLSL) {
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 } },
+    vertexShader: /* glsl */ `
+      varying vec3 vPos;
+      varying vec3 vWorldNormal;
+      varying vec3 vWorldPos;
+      void main() {
+        vPos = position;
+        vWorldNormal = normalize(mat3(modelMatrix) * normal);
+        vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform float uTime;
+      varying vec3 vPos;
+      varying vec3 vWorldNormal;
+      varying vec3 vWorldPos;
+      ${NOISE_GLSL}
+      void main() {
+        vec3 p = normalize(vPos);
+        vec3 col;
+        ${colorGLSL}
+        vec3 n = normalize(vWorldNormal);
+        vec3 lightDir = normalize(-vWorldPos);
+        float light = clamp(dot(n, lightDir) * 0.85 + 0.15, 0.0, 1.0);
+        vec3 viewDir = normalize(cameraPosition - vWorldPos);
+        float rim = pow(1.0 - clamp(dot(n, viewDir), 0.0, 1.0), 2.6);
+        gl_FragColor = vec4(col * pow(light, 1.2) + col * rim * 0.25, 1.0);
+      }
+    `,
+  });
+  solarMats.push(mat);
+  return mat;
+}
+const solarMats = [];
+
+// 行星環（土星 / 天王星）
+function makeRingMat(inner, outer, tint, gap) {
+  return new THREE.ShaderMaterial({
+    vertexShader: /* glsl */ `
+      varying vec3 vPos;
+      void main() {
+        vPos = position;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      varying vec3 vPos;
+      ${NOISE_GLSL}
+      void main() {
+        float d = length(vPos.xy);
+        float tt = (d - ${inner.toFixed(3)}) / ${(outer - inner).toFixed(3)};
+        float bands = noise(vec3(d * 40.0, 3.7, 9.1)) * 0.6 + noise(vec3(d * 90.0, 7.7, 2.2)) * 0.4;
+        float alpha = smoothstep(0.0, 0.08, tt) * (1.0 - smoothstep(0.85, 1.0, tt));
+        alpha *= 0.25 + bands * 0.55;
+        alpha *= ${gap >= 0 ? `mix(0.12, 1.0, smoothstep(0.02, 0.05, abs(tt - ${gap.toFixed(2)})))` : '1.0'};
+        vec3 col = mix(vec3(${tint}) * 0.7, vec3(${tint}), bands);
+        gl_FragColor = vec4(col, alpha);
+      }
+    `,
+    transparent: true,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+}
+
+const HIT_MAT = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+const hitTargets = [];
+
+const SOLAR_DEFS = [
+  {
+    key: 'mercury', zh: '水星', en: 'MERCURY', page: null, r: 2.0, size: 0.10, speed: 0.42,
+    desc: '最小、最快、滿臉坑疤的信使。', dist: '0.39 AU',
+    facts: [['直徑', '4,879 km'], ['公轉一年', '88 天'], ['大氣', '幾乎沒有']],
+    glsl: `float h = fbm(p * 6.0) * 0.6 + ridged(p * 12.0) * 0.4;
+           col = mix(vec3(0.25, 0.24, 0.23), vec3(0.55, 0.52, 0.50), h);`,
+  },
+  {
+    key: 'venus', zh: '金星', en: 'VENUS', page: null, r: 2.7, size: 0.17, speed: 0.30,
+    desc: '硫酸雲下的失控溫室，地表 465°C。', dist: '0.72 AU',
+    facts: [['直徑', '12,104 km'], ['地表溫度', '465°C'], ['自轉', '逆行 · 243 天']],
+    glsl: `float bands = fbm(p * 3.0 + vec3(0.0, p.y * 4.0, uTime * 0.01));
+           col = mix(vec3(0.72, 0.58, 0.36), vec3(0.92, 0.83, 0.62), bands);`,
+  },
+  {
+    key: 'earth', zh: '地球', en: 'EARTH', page: 'earth', r: 3.6, size: 0.18, speed: 0.24,
+    desc: '目前已知唯一孕育生命的行星。', dist: '1.00 AU',
+    facts: [['直徑', '12,742 km'], ['衛星', '1 顆'], ['生命', '確認 ✓']],
+    glsl: `float c = fbm(p * 2.6) * 0.7 + fbm(p * 7.0 + 19.3) * 0.3;
+           float land = smoothstep(0.52, 0.56, c);
+           col = mix(vec3(0.04, 0.14, 0.32),
+                     mix(vec3(0.10, 0.28, 0.11), vec3(0.35, 0.30, 0.18), smoothstep(0.56, 0.8, c)), land);
+           float cloud = smoothstep(0.55, 0.8, fbm(p * 4.0 + vec3(uTime * 0.02)));
+           col = mix(col, vec3(0.9), cloud * 0.5);
+           col = mix(col, vec3(0.93), smoothstep(0.85, 0.92, abs(p.y)));`,
+  },
+  {
+    key: 'mars', zh: '火星', en: 'MARS', page: 'mars', r: 4.5, size: 0.13, speed: 0.19,
+    desc: '鏽紅的荒漠，人類的下一站。', dist: '1.52 AU',
+    facts: [['直徑', '6,779 km'], ['衛星', '2 顆'], ['狀態', '下一站']],
+    glsl: `float h = fbm(p * 3.5) * 0.7 + ridged(p * 7.0) * 0.3;
+           col = mix(vec3(0.32, 0.12, 0.06), vec3(0.78, 0.42, 0.20), h);
+           col = mix(col, vec3(0.93, 0.91, 0.88), smoothstep(0.88, 0.94, abs(p.y)));`,
+  },
+  {
+    key: 'jupiter', zh: '木星', en: 'JUPITER', page: null, r: 6.0, size: 0.55, speed: 0.10,
+    desc: '行星之王，與一場刮了三百年的風暴。', dist: '5.20 AU',
+    facts: [['直徑', '139,820 km'], ['衛星', '95+ 顆'], ['大紅斑', '比地球大']],
+    glsl: `float turb = fbm(p * 4.0 + vec3(uTime * 0.015, 0.0, 0.0)) * 0.35;
+           float bands = sin(p.y * 16.0 + turb * 6.0);
+           col = mix(vec3(0.85, 0.78, 0.65), vec3(0.62, 0.42, 0.28), smoothstep(-0.4, 0.6, bands));
+           col = mix(col, vec3(0.93, 0.90, 0.84), smoothstep(0.7, 1.0, bands) * 0.5);
+           vec2 spotUV = vec2(atan(p.z, p.x) / 6.2832 + 0.5, p.y);
+           float spot = exp(-(pow((spotUV.x - 0.3) * 9.0, 2.0) + pow((spotUV.y + 0.22) * 16.0, 2.0)));
+           col = mix(col, vec3(0.72, 0.28, 0.15), spot * 0.9);`,
+  },
+  {
+    key: 'saturn', zh: '土星', en: 'SATURN', page: null, r: 7.6, size: 0.46, speed: 0.075,
+    desc: '戴著冰環的優雅巨人，密度比水還低。', dist: '9.58 AU',
+    facts: [['直徑', '116,460 km'], ['環寬', '約 28 萬 km'], ['密度', '比水低']],
+    glsl: `float turb = fbm(p * 3.0) * 0.3;
+           float bands = sin(p.y * 12.0 + turb * 4.0);
+           col = mix(vec3(0.78, 0.68, 0.48), vec3(0.92, 0.86, 0.68), smoothstep(-0.6, 0.8, bands));`,
+  },
+  {
+    key: 'uranus', zh: '天王星', en: 'URANUS', page: null, r: 8.9, size: 0.26, speed: 0.055,
+    desc: '躺著自轉的冰巨星，自轉軸傾斜 98°。', dist: '19.2 AU',
+    facts: [['直徑', '50,724 km'], ['自轉軸', '傾斜 98°'], ['雲頂溫度', '-224°C']],
+    glsl: `float b = fbm(p * 2.0 + vec3(0.0, p.y * 2.0, 0.0));
+           col = mix(vec3(0.45, 0.72, 0.78), vec3(0.62, 0.85, 0.88), b);`,
+  },
+  {
+    key: 'neptune', zh: '海王星', en: 'NEPTUNE', page: null, r: 10.0, size: 0.25, speed: 0.045,
+    desc: '最遠的深藍行星，吹著超音速的風。', dist: '30.1 AU',
+    facts: [['直徑', '49,244 km'], ['風速', '2,100 km/h'], ['一年', '165 地球年']],
+    glsl: `float b = fbm(p * 3.0 + vec3(uTime * 0.02, 0.0, 0.0));
+           col = mix(vec3(0.08, 0.18, 0.48), vec3(0.25, 0.42, 0.85), b);
+           float streak = smoothstep(0.65, 0.85, fbm(p * 6.0 + vec3(uTime * 0.04, 0.0, 0.0)));
+           col = mix(col, vec3(0.85, 0.9, 1.0), streak * 0.25);`,
+  },
+];
+
+const SUN_DEF = {
+  key: 'sun', zh: '太陽', en: 'SUN', page: 'sun', size: 0.85,
+  desc: '佔太陽系質量 99.86% 的恆星本體。', dist: '0 AU',
+  facts: [['直徑', '1,392,700 km'], ['表面溫度', '5,500°C'], ['核心', '15,000,000°C']],
+};
+const LUNA_DEF = {
+  key: 'luna', zh: '月球', en: 'MOON', page: 'moon', size: 0.05,
+  desc: '地球唯一的天然衛星。', dist: '距地球 38 萬 km',
+  facts: [['直徑', '3,474 km'], ['距地球', '384,400 km'], ['造訪人數', '12 人']],
+};
+
+// 太陽本體（共用電漿 shader 與日冕材質）
+const solarSun = new THREE.Mesh(new THREE.SphereGeometry(0.85, 64, 64), sunMat);
+const solarCorona = new THREE.Mesh(new THREE.SphereGeometry(1.32, 48, 48), coronaMat);
+solarGroup.add(solarSun, solarCorona);
+SUN_DEF._carrier = solarSun;
+{
+  const sunHit = new THREE.Mesh(new THREE.SphereGeometry(1.05, 12, 12), HIT_MAT);
+  sunHit.userData.def = SUN_DEF;
+  solarGroup.add(sunHit);
+  hitTargets.push(sunHit);
+}
+
+// 八大行星
+let lunaPivotHome = null;
+SOLAR_DEFS.forEach((def, i) => {
+  const pivot = new THREE.Group();
+  pivot.rotation.y = i * 2.4 + 0.8;
+  solarGroup.add(pivot);
+
+  const carrier = new THREE.Group();
+  carrier.position.set(def.r, 0, 0);
+  pivot.add(carrier);
+
+  const body = new THREE.Mesh(new THREE.SphereGeometry(def.size, 48, 48), makeSolarMat(def.glsl));
+  carrier.add(body);
+  def._spin = body;
+
+  // 土星環與天王星環（含軸傾斜）
+  if (def.key === 'saturn') {
+    carrier.rotation.z = 0.47;
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(def.size * 1.25, def.size * 2.3, 96),
+      makeRingMat(def.size * 1.25, def.size * 2.3, '0.85, 0.76, 0.58', 0.62)
+    );
+    ring.rotation.x = Math.PI / 2;
+    carrier.add(ring);
+    def._ring = ring;
+  }
+  if (def.key === 'uranus') {
+    carrier.rotation.z = 1.71;
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(def.size * 1.5, def.size * 1.9, 96),
+      makeRingMat(def.size * 1.5, def.size * 1.9, '0.55, 0.70, 0.80', -1)
+    );
+    ring.rotation.x = Math.PI / 2;
+    carrier.add(ring);
+    def._ring = ring;
+  }
+
+  // 地球的月球
+  if (def.key === 'earth') {
+    lunaPivotHome = new THREE.Group();
+    carrier.add(lunaPivotHome);
+    const lunaBody = new THREE.Mesh(
+      new THREE.SphereGeometry(LUNA_DEF.size, 24, 24),
+      makeSolarMat(`float h = fbm(p * 6.0) * 0.6 + ridged(p * 12.0) * 0.4;
+                    col = mix(vec3(0.22, 0.22, 0.23), vec3(0.55, 0.55, 0.57), h);`)
+    );
+    lunaBody.position.set(0.38, 0, 0);
+    lunaPivotHome.add(lunaBody);
+    LUNA_DEF._carrier = lunaBody;
+    const lunaHit = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 10), HIT_MAT);
+    lunaHit.userData.def = LUNA_DEF;
+    lunaBody.add(lunaHit);
+    hitTargets.push(lunaHit);
+  }
+
+  // 點擊判定球（放大判定範圍，行動裝置也好點）
+  const hit = new THREE.Mesh(
+    new THREE.SphereGeometry(Math.max(def.size * 1.6, 0.22), 12, 12), HIT_MAT
+  );
+  hit.userData.def = def;
+  carrier.add(hit);
+  hitTargets.push(hit);
+
+  // 軌道線
+  const orbit = makeOrbitRing(def.r, 0);
+  solarGroup.add(orbit);
+
+  def._pivot = pivot;
+  def._carrier = carrier;
+  def._orbitMat = orbit.material;
+});
+
+const ALL_DEFS = [SUN_DEF, ...SOLAR_DEFS, LUNA_DEF];
+
+// 各天體真實半徑（km），供首頁「真實比例」模式換算
+const REAL_KM = {
+  mercury: 2440, venus: 6052, earth: 6371, mars: 3390,
+  jupiter: 69911, saturn: 58232, uranus: 25362, neptune: 24622, luna: 1737,
+};
+
+/* ================================================================
+   行星頁地標 pin（功能 5）
+   ================================================================ */
+// 經緯度 → 單位球面座標（經度對齊與程序化貼圖無關，僅求分布均勻）
+function latLon(lat, lon, r = 1.04) {
+  const phi = (90 - lat) * Math.PI / 180;
+  const theta = (lon + 180) * Math.PI / 180;
+  return new THREE.Vector3(
+    r * Math.sin(phi) * Math.cos(theta),
+    r * Math.cos(phi),
+    r * Math.sin(phi) * Math.sin(theta)
+  );
+}
+
+const LANDMARKS = {
+  mars: [
+    { zh: '奧林帕斯山', en: 'OLYMPUS MONS', lat: 18, lon: -134, desc: '太陽系最高的火山，21.9 公里——近三座聖母峰。' },
+    { zh: '水手號峽谷', en: 'VALLES MARINERIS', lat: -14, lon: -59, desc: '長 4,000 公里的巨大裂谷，深達 7 公里。' },
+    { zh: '北極冰冠', en: 'PLANUM BOREUM', lat: 85, lon: 0, desc: '由水冰與乾冰構成，隨火星季節消長。' },
+  ],
+  earth: [
+    { zh: '聖母峰', en: 'MOUNT EVEREST', lat: 28, lon: 87, desc: '海拔 8,849 公尺的世界之巔，仍在長高。' },
+    { zh: '馬里亞納海溝', en: 'MARIANA TRENCH', lat: 11, lon: 142, desc: '地殼最深處，深達 10,935 公尺。' },
+    { zh: '亞馬遜雨林', en: 'THE AMAZON', lat: -3, lon: -60, desc: '地球之肺，容納十分之一的已知物種。' },
+  ],
+  moon: [
+    { zh: '寧靜海', en: 'SEA OF TRANQUILITY', lat: 9, lon: 31, desc: '1969 年，人類的第一個腳印落在這裡。' },
+    { zh: '第谷坑', en: 'TYCHO', lat: -43, lon: -11, desc: '一億年前的年輕撞擊坑，射紋滿月可見。' },
+    { zh: '南極艾特肯盆地', en: 'SOUTH POLE–AITKEN', lat: -75, lon: 160, desc: '太陽系最大撞擊盆地之一，坑底藏水冰。' },
+  ],
+};
+
+const PIN_SETS = {};
+const pinHitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+for (const key in LANDMARKS) {
+  const group = new THREE.Group();
+  group.visible = false;
+  marsGroup.add(group);
+  const positions = [];
+  const hits = [];
+  LANDMARKS[key].forEach((lm) => {
+    const p = latLon(lm.lat, lm.lon);
+    positions.push(p.x, p.y, p.z);
+    const hit = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), pinHitMat);
+    hit.position.copy(p);
+    hit.userData.landmark = lm;
+    lm._pos = p;
+    group.add(hit);
+    hits.push(hit);
+  });
+  const pg = new THREE.BufferGeometry();
+  pg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
+  const points = new THREE.Points(pg, new THREE.PointsMaterial({
+    size: 0.07, transparent: true, opacity: 0.8, sizeAttenuation: true,
+    depthWrite: false, blending: THREE.AdditiveBlending,
+  }));
+  group.add(points);
+  PIN_SETS[key] = { group, points, hits, defs: LANDMARKS[key] };
+}
+
+// 衛星用的太陽光（火星本體用自訂 shader，不受此影響）
+const sunLight = new THREE.DirectionalLight(0xffe0c0, 2.4);
+sunLight.position.copy(SUN_DIR).multiplyScalar(10);
+scene.add(sunLight, new THREE.AmbientLight(0x331a10, 0.8));
+
+/* ---------------- 星空 ---------------- */
+function makeStars(count, spread, size, color) {
+  const positions = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    const v = new THREE.Vector3().randomDirection().multiplyScalar(spread * (0.5 + Math.random() * 0.5));
+    positions.set([v.x, v.y, v.z], i * 3);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  return new THREE.Points(geo, new THREE.PointsMaterial({
+    color, size, sizeAttenuation: true, transparent: true, opacity: 0.85,
+  }));
+}
+const starsFar = makeStars(2600, 60, 0.06, 0xfff4e8);
+const starsNear = makeStars(500, 30, 0.1, 0xffc9a0);
+scene.add(starsFar, starsNear);
+
+/* ---------------- 漂浮塵埃粒子 ---------------- */
+const dustParticles = makeStars(220, 8, 0.025, 0xff8a55);
+dustParticles.material.opacity = 0.5;
+scene.add(dustParticles);
+
+/* ---------------- 銀河帶 ---------------- */
+const milkyMat = new THREE.ShaderMaterial({
+  vertexShader: /* glsl */ `
+    varying vec3 vDir;
+    void main() {
+      vDir = normalize(position);
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: /* glsl */ `
+    varying vec3 vDir;
+    ${NOISE_GLSL}
+    void main() {
+      vec3 p = normalize(vDir);
+      float band = exp(-pow(dot(p, normalize(vec3(0.25, 1.0, 0.18))), 2.0) * 18.0);
+      float wisp = fbm(p * 3.5) * 0.65 + fbm(p * 9.0 + 4.7) * 0.35;
+      float a = band * smoothstep(0.35, 0.85, wisp) * 0.32;
+      vec3 col = mix(vec3(0.55, 0.62, 0.85), vec3(0.95, 0.82, 0.66), fbm(p * 2.2 + 9.0));
+      gl_FragColor = vec4(col, a);
+    }
+  `,
+  transparent: true,
+  blending: THREE.AdditiveBlending,
+  side: THREE.BackSide,
+  depthWrite: false,
+});
+scene.add(new THREE.Mesh(new THREE.SphereGeometry(58, 48, 48), milkyMat));
+
+/* ---------------- 帶十字光芒的亮星 ---------------- */
+function makeFlareTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(32, 32, 0, 32, 32, 30);
+  grad.addColorStop(0, 'rgba(255,250,240,1)');
+  grad.addColorStop(0.25, 'rgba(255,240,220,0.5)');
+  grad.addColorStop(1, 'rgba(255,240,220,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 64, 64);
+  g.strokeStyle = 'rgba(255,250,235,0.85)';
+  g.lineWidth = 1.5;
+  g.beginPath();
+  g.moveTo(32, 2); g.lineTo(32, 62);
+  g.moveTo(2, 32); g.lineTo(62, 32);
+  g.stroke();
+  return new THREE.CanvasTexture(c);
+}
+const flareTex = makeFlareTexture();
+for (let i = 0; i < 14; i++) {
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: flareTex, transparent: true, opacity: 0.5 + Math.random() * 0.4,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  }));
+  s.position.copy(new THREE.Vector3().randomDirection().multiplyScalar(40 + Math.random() * 14));
+  const sc = 0.8 + Math.random() * 1.6;
+  s.scale.set(sc, sc, 1);
+  scene.add(s);
+}
+
+/* ================================================================
+   滾動運鏡 — 每個章節一組關鍵影格
+   ================================================================ */
+const KF = {
+  mars: [
+    { x: 0.0,  y: -0.55, z: 0,    s: 1.0,  camZ: 4.2 },  // 0 序章
+    { x: 1.45, y: 0.0,   z: 0,    s: 0.95, camZ: 4.2 },  // 1 數據：右側
+    { x: -1.5, y: 0.15,  z: 0.8,  s: 1.7,  camZ: 4.0 },  // 2 地理：左側特寫
+    { x: 1.5,  y: -0.05, z: 0.55, s: 1.35, camZ: 4.1 },  // 3 水：右側近景
+    { x: 0.0,  y: 0.1,   z: -1.2, s: 0.62, camZ: 4.6 },  // 4 衛星：拉遠看軌道
+    { x: 0.0,  y: -1.3,  z: 0.8,  s: 1.6,  camZ: 4.2 },  // 5 故事：貼著地平線
+    { x: 1.55, y: -0.1,  z: -0.5, s: 0.8,  camZ: 4.4 },  // 6 任務：右側中景
+    { x: 0.0,  y: -1.15, z: 0.5,  s: 1.5,  camZ: 4.2 },  // 7 未來：地平線日出
+  ],
+  earth: [
+    { x: 0.0,  y: -0.55, z: 0,    s: 1.0,  camZ: 4.2 },  // 0 序章
+    { x: 1.45, y: 0.0,   z: 0,    s: 0.95, camZ: 4.2 },  // 1 數據
+    { x: -1.5, y: 0.15,  z: 0.8,  s: 1.7,  camZ: 4.0 },  // 2 地理特寫
+    { x: 0.0,  y: 0.05,  z: -0.9, s: 0.66, camZ: 4.5 },  // 3 生命長卷：中景
+    { x: 1.5,  y: 0.05,  z: 0.5,  s: 1.35, camZ: 4.1 },  // 4 藍色引擎：右近景
+    { x: 0.0,  y: 0.1,   z: -1.2, s: 0.62, camZ: 4.6 },  // 5 月球軌道
+    { x: 1.55, y: -0.1,  z: -0.5, s: 0.8,  camZ: 4.4 },  // 6 太空時代
+    { x: 0.0,  y: -1.15, z: 0.5,  s: 1.5,  camZ: 4.2 },  // 7 家：日出
+  ],
+  moon: [
+    { x: 0.0,  y: -0.55, z: 0,    s: 1.0,  camZ: 4.2 },  // 0 序章
+    { x: 1.45, y: 0.0,   z: 0,    s: 0.95, camZ: 4.2 },  // 1 數據
+    { x: 0.0,  y: 0.05,  z: -0.9, s: 0.66, camZ: 4.5 },  // 2 月相：拉遠凝視
+    { x: -1.5, y: 0.15,  z: 0.8,  s: 1.7,  camZ: 4.0 },  // 3 地貌特寫
+    { x: 0.0,  y: -1.25, z: 0.7,  s: 1.55, camZ: 4.2 },  // 4 1969：寧靜海地平線
+    { x: 1.55, y: -0.1,  z: -0.5, s: 0.8,  camZ: 4.4 },  // 5 探月史
+    { x: 0.0,  y: -1.15, z: 0.5,  s: 1.5,  camZ: 4.2 },  // 6 前哨站
+  ],
+  sun: [
+    { x: 0.0,  y: -0.55, z: 0,    s: 1.0,  camZ: 4.2 },  // 0 序章
+    { x: 1.45, y: 0.0,   z: 0,    s: 0.95, camZ: 4.2 },  // 1 數據
+    { x: -1.5, y: 0.1,   z: 0.7,  s: 1.6,  camZ: 4.1 },  // 2 結構特寫
+    { x: 1.5,  y: -0.05, z: 0.5,  s: 1.35, camZ: 4.1 },  // 3 太陽活動
+    { x: 0.0,  y: -1.35, z: 0.8,  s: 1.7,  camZ: 4.2 },  // 4 1859：烈焰地平線
+    { x: 0.0,  y: 0.05,  z: -1.3, s: 0.55, camZ: 4.6 },  // 5 觀測史：拉遠看行星系
+    { x: 0.0,  y: -1.15, z: 0.5,  s: 1.5,  camZ: 4.2 },  // 6 命運：日出
+  ],
+};
+let currentKF = KF.mars;
+let homeActive = false;
+
+// 行星頁拖曳旋轉狀態（需在第一幀前宣告）
+const userSpin = { y: 0, tilt: 0, goal: null };
+let spinVel = 0;
+let planetDragging = false;
+let currentPins = null;
+let realScale = false;
+
+const smooth = { t: 0 };
+let scrollT = 0;
+
+function ease(t) { return t * t * (3 - 2 * t); }
+
+function lerpKeyframes(t) {
+  const n = currentKF.length - 1;
+  const f = Math.min(Math.max(t * n, 0), n - 1e-5);
+  const i = Math.floor(f);
+  const k = ease(f - i);
+  const a = currentKF[i], b = currentKF[i + 1];
+  return {
+    x: a.x + (b.x - a.x) * k,
+    y: a.y + (b.y - a.y) * k,
+    z: a.z + (b.z - a.z) * k,
+    s: a.s + (b.s - a.s) * k,
+    camZ: a.camZ + (b.camZ - a.camZ) * k,
+  };
+}
+
+/* ---------------- 滑鼠視差 ---------------- */
+const mouse = { x: 0, y: 0 };
+window.addEventListener('pointermove', (e) => {
+  mouse.x = (e.clientX / window.innerWidth - 0.5) * 2;
+  mouse.y = (e.clientY / window.innerHeight - 0.5) * 2;
+});
+
+/* ---------------- 主迴圈 ---------------- */
+const clock = new THREE.Clock();
+
+function tick() {
+  const t = clock.getElapsedTime();
+
+  if (!homeActive) {
+    // 平滑追蹤滾動進度
+    smooth.t += (scrollT - smooth.t) * 0.06;
+    const k = lerpKeyframes(smooth.t);
+    marsGroup.position.set(k.x, k.y, k.z);
+    marsGroup.scale.setScalar(k.s);
+    camera.position.z = k.camZ;
+  }
+
+  // 自轉 + 滾動帶動額外旋轉 + 使用者拖曳
+  mars.rotation.y = t * 0.05 + smooth.t * 2.2 + userSpin.y;
+  dustLayer.rotation.y = t * 0.065 + smooth.t * 2.2 + userSpin.y;
+  dustMat.uniforms.uTime.value = t;
+  cloudsMat.uniforms.uTime.value = t;
+
+  // 拖曳慣性與回正
+  if (!planetDragging) {
+    if (userSpin.goal !== null) {
+      userSpin.y += (userSpin.goal - userSpin.y) * 0.08;
+      if (Math.abs(userSpin.goal - userSpin.y) < 0.01) userSpin.goal = null;
+    } else {
+      userSpin.y += spinVel;
+      spinVel *= 0.94;
+    }
+    userSpin.tilt *= 0.97;
+  }
+  marsGroup.rotation.x = userSpin.tilt;
+
+  // 地標 pin：跟著星球轉 + hover 偵測
+  if (!homeActive && currentPins) {
+    currentPins.group.rotation.y = mars.rotation.y;
+    currentPins.points.material.opacity = 0.55 + Math.sin(t * 2.2) * 0.3;
+    raycaster.setFromCamera({ x: mouse.x, y: -mouse.y }, camera);
+    const pinHit = raycaster.intersectObjects([mars, ...currentPins.hits], false)[0];
+    const lm = pinHit && pinHit.object.userData.landmark ? pinHit.object.userData.landmark : null;
+    setPinHover(lm);
+    canvas.style.cursor = lm ? 'pointer' : '';
+  }
+
+  // 衛星公轉
+  phobosPivot.rotation.y = t * 0.45;
+  deimosPivot.rotation.y = t * 0.16 + 2.1;
+  phobos.rotation.y = t * 0.8;
+  deimos.rotation.x = t * 0.5;
+  lunaPivot.rotation.y = t * 0.1 + 1.2;
+  luna.rotation.y = t * 0.1;
+  earthMiniPivot.rotation.y = t * 0.07 + 3.6;
+  earthMini.rotation.y = t * 0.35;
+
+  // 星球專屬效果
+  storm.rotation.y = t * 0.14;
+  probePivot.rotation.y = -t * 0.32;
+  probe.rotation.y = t * 0.5;
+  auroraMat.uniforms.uTime.value = t;
+  sats.rotation.y = t * 0.06;
+  moonFX.rotation.y = mars.rotation.y;  // 著陸點標記跟著月面自轉
+  apollo.material.opacity = 0.55 + Math.sin(t * 2.4) * 0.35;
+  sunMat.uniforms.uTime.value = t;
+  coronaMat.uniforms.uTime.value = t;
+  prominence.rotation.y = t * 0.05;
+  planetPivots.forEach((p) => { p.pivot.rotation.y += p.speed * 0.004; });
+
+  // 流星：每 6.5 秒劃過一次（僅火星模式）
+  const mPhase = (t % 6.5) / 1.1;
+  if (meteor.visible && mPhase < 1) {
+    meteorMat.opacity = Math.sin(mPhase * Math.PI) * 0.9;
+    meteor.position.set(-2.6 + mPhase * 4.6, 1.9 - mPhase * 1.2, -1.5);
+  } else {
+    meteorMat.opacity = 0;
+  }
+
+  // 星空緩慢漂移 + 滑鼠視差
+  starsFar.rotation.y = t * 0.004;
+  starsNear.rotation.y = -t * 0.007;
+  dustParticles.rotation.y = t * 0.02;
+
+  if (homeActive) {
+    homeTick(t);
+  } else {
+    camera.position.x += (mouse.x * 0.18 - camera.position.x) * 0.04;
+    camera.position.y += (-mouse.y * 0.12 - camera.position.y) * 0.04;
+    camera.lookAt(marsGroup.position.x * 0.4, marsGroup.position.y * 0.4, 0);
+  }
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+tick();
+
+/* ================================================================
+   UI 邏輯
+   ================================================================ */
+const progressBar = document.getElementById('progressBar');
+const hudScroll = document.getElementById('hudScroll');
+const hudCoords = document.getElementById('hudCoords');
+const dotsNav = document.getElementById('dots');
+let dots = [];
+let sections = [...document.querySelectorAll('main:not([hidden]) .panel')];
+
+function buildDots() {
+  dotsNav.innerHTML = '';
+  dots = sections.map((s, i) => {
+    const b = document.createElement('button');
+    b.setAttribute('aria-label', `第 ${i + 1} 章`);
+    b.addEventListener('click', () => s.scrollIntoView({ behavior: 'smooth' }));
+    dotsNav.appendChild(b);
+    return b;
+  });
+}
+buildDots();
+
+function onScroll() {
+  const max = document.documentElement.scrollHeight - window.innerHeight;
+  scrollT = max > 0 ? window.scrollY / max : 0;
+  progressBar.style.width = `${scrollT * 100}%`;
+  hudScroll.textContent = `${String(Math.round(scrollT * 100)).padStart(3, '0')}%`;
+
+  // 假裝的軌道座標，純氛圍
+  const lat = (Math.sin(scrollT * Math.PI * 2) * 65).toFixed(2);
+  const lon = ((scrollT * 720) % 360 - 180).toFixed(2);
+  hudCoords.textContent = `LAT ${lat} · LON ${lon}`;
+
+  const idx = Math.min(Math.round(scrollT * (sections.length - 1)), sections.length - 1);
+  dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+}
+window.addEventListener('scroll', onScroll, { passive: true });
+onScroll();
+
+/* ---- 進場顯示動畫 ---- */
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach((e) => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      revealObserver.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.15 });
+document.querySelectorAll('.reveal').forEach((el) => revealObserver.observe(el));
+
+/* ---- 數字跳動動畫 ---- */
+const countObserver = new IntersectionObserver((entries) => {
+  entries.forEach((e) => {
+    if (!e.isIntersecting) return;
+    countObserver.unobserve(e.target);
+    const el = e.target;
+    const target = parseFloat(el.dataset.count);
+    const decimals = parseInt(el.dataset.decimal || '0', 10);
+    const dur = 1600;
+    const start = performance.now();
+    function step(now) {
+      const p = Math.min((now - start) / dur, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = (target * eased).toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  });
+}, { threshold: 0.6 });
+document.querySelectorAll('[data-count]').forEach((el) => countObserver.observe(el));
+
+/* ================================================================
+   行星切換：火星 ↔ 地球
+   ================================================================ */
+const buttons = {
+  home: document.getElementById('btnHome'),
+  mars: document.getElementById('btnMars'),
+  earth: document.getElementById('btnEarth'),
+  moon: document.getElementById('btnMoon'),
+  sun: document.getElementById('btnSun'),
+};
+const mains = {
+  mars: document.getElementById('mainMars'),
+  earth: document.getElementById('mainEarth'),
+  moon: document.getElementById('mainMoon'),
+  sun: document.getElementById('mainSun'),
+};
+const hudBrand = document.getElementById('hudBrand');
+const hudSystem = document.getElementById('hudSystem');
+
+const PLANET_CONFIG = {
+  home: {
+    surface: null,
+    shell: null,
+    atmos: false,
+    atmosLow: [0, 0, 0],
+    atmosHigh: [0, 0, 0],
+    clearColor: 0x010103,
+    theme: 'home',
+    satellites: 'none',
+    kf: null,
+    brand: 'SOL//SYSTEM',
+    system: 'SOLAR SYSTEM · INTERACTIVE MAP',
+    title: 'SOLAR SYSTEM — 太陽系',
+  },
+  mars: {
+    surface: marsMat,
+    shell: dustMat,
+    atmosLow: [1.0, 0.30, 0.12],
+    atmosHigh: [1.0, 0.65, 0.35],
+    clearColor: 0x020104,
+    theme: null,
+    satellites: 'duo',
+    kf: KF.mars,
+    brand: 'MARS//MISSION',
+    system: 'ARES SYSTEM · 4TH PLANET',
+    title: 'MARS — 火星 · 紅色星球',
+  },
+  earth: {
+    surface: earthMat,
+    shell: cloudsMat,
+    atmosLow: [0.18, 0.45, 1.0],
+    atmosHigh: [0.55, 0.80, 1.0],
+    clearColor: 0x010409,
+    theme: 'earth',
+    satellites: 'luna',
+    kf: KF.earth,
+    brand: 'EARTH//MISSION',
+    system: 'SOL SYSTEM · 3RD PLANET',
+    title: 'EARTH — 地球 · 藍色彈珠',
+  },
+  moon: {
+    surface: moonMat,
+    shell: null,
+    atmosLow: [0.30, 0.34, 0.42],
+    atmosHigh: [0.65, 0.70, 0.80],
+    clearColor: 0x020308,
+    theme: 'moon',
+    satellites: 'home',
+    kf: KF.moon,
+    brand: 'MOON//MISSION',
+    system: 'EARTH ORBIT · LUNA',
+    title: 'MOON — 月球 · 銀色之伴',
+  },
+  sun: {
+    surface: sunMat,
+    shell: null,
+    atmos: false,
+    atmosLow: [1.0, 0.5, 0.1],
+    atmosHigh: [1.0, 0.8, 0.4],
+    clearColor: 0x040201,
+    theme: 'sun',
+    satellites: 'none',
+    kf: KF.sun,
+    brand: 'SUN//MISSION',
+    system: 'SOL · G2V MAIN-SEQUENCE STAR',
+    title: 'SUN — 太陽 · 一切光的源頭',
+  },
+};
+
+function applyPlanet(name) {
+  const cfg = PLANET_CONFIG[name];
+  const isHome = name === 'home';
+
+  // 首頁 ↔ 行星頁 場景切換
+  homeActive = isHome;
+  solarGroup.visible = isHome;
+  marsGroup.visible = !isHome;
+  canvas.style.cursor = isHome ? 'grab' : '';
+  planetBar.hidden = !isHome;
+  scaleToggle.hidden = !isHome;
+  if (!isHome) {
+    hideTip();
+    unfocus(true);
+  }
+
+  // 地標 pin 與拖曳狀態重置
+  for (const k in PIN_SETS) PIN_SETS[k].group.visible = k === name;
+  currentPins = PIN_SETS[name] || null;
+  userSpin.y = 0;
+  userSpin.tilt = 0;
+  userSpin.goal = null;
+  spinVel = 0;
+
+  // 3D 場景切換
+  if (cfg.surface) mars.material = cfg.surface;
+  dustLayer.visible = !isHome && !!cfg.shell;
+  if (cfg.shell) dustLayer.material = cfg.shell;
+  atmosMat.uniforms.uColLow.value.setRGB(...cfg.atmosLow);
+  atmosMat.uniforms.uColHigh.value.setRGB(...cfg.atmosHigh);
+  renderer.setClearColor(cfg.clearColor);
+  phobosPivot.visible = deimosPivot.visible = cfg.satellites === 'duo';
+  ringPhobos.visible = ringDeimos.visible = cfg.satellites === 'duo';
+  lunaPivot.visible = ringLuna.visible = cfg.satellites === 'luna';
+  earthMiniPivot.visible = ringEarthMini.visible = cfg.satellites === 'home';
+  marsFX.visible = meteor.visible = name === 'mars';
+  earthFX.visible = name === 'earth';
+  moonFX.visible = name === 'moon';
+  sunFX.visible = name === 'sun';
+  atmosphere.visible = cfg.atmos !== false;
+  currentKF = cfg.kf || currentKF;
+
+  // 內容與主題切換
+  document.body.classList.remove('earth', 'moon', 'sun', 'home');
+  if (cfg.theme) document.body.classList.add(cfg.theme);
+  for (const key of Object.keys(mains)) {
+    mains[key].hidden = key !== name;
+    buttons[key].classList.toggle('active', key === name);
+  }
+  hudBrand.textContent = cfg.brand;
+  hudSystem.textContent = cfg.system;
+  document.title = cfg.title;
+
+  // 重新計算章節、重建導覽點
+  sections = [...document.querySelectorAll('main:not([hidden]) .panel')];
+  buildDots();
+}
+
+/* ---- 切換轉場：記憶各星球滾動位置 + 淡入淡出 ---- */
+const fader = document.getElementById('fader');
+const scrollMemory = { home: 0, mars: 0, earth: 0, moon: 0, sun: 0 };
+let currentPlanet = null;
+let switching = false;
+
+function setPlanet(name) {
+  if (name === currentPlanet || switching) return;
+
+  // 初次載入：不轉場，直接就位
+  if (currentPlanet === null) {
+    currentPlanet = name;
+    applyPlanet(name);
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    onScroll();
+    smooth.t = scrollT;
+    return;
+  }
+
+  switching = true;
+  scrollMemory[currentPlanet] = window.scrollY;
+  fader.classList.add('on');
+
+  setTimeout(() => {
+    currentPlanet = name;
+    applyPlanet(name);
+    window.scrollTo({ top: scrollMemory[name] || 0, behavior: 'instant' });
+    onScroll();
+    smooth.t = scrollT; // 3D 直接就定位，掀開遮罩時不漂移
+
+    fader.classList.remove('on');
+    switching = false;
+  }, 380);
+}
+
+for (const key of Object.keys(buttons)) {
+  buttons[key].addEventListener('click', () => setPlanet(key));
+}
+
+/* ================================================================
+   太陽系首頁：鏡頭與互動
+   ================================================================ */
+const planetTip = document.getElementById('planetTip');
+const tipName = document.getElementById('tipName');
+const tipDesc = document.getElementById('tipDesc');
+const tipBadge = document.getElementById('tipBadge');
+const focusCard = document.getElementById('focusCard');
+const focusTag = document.getElementById('focusTag');
+const focusName = document.getElementById('focusName');
+const focusDesc = document.getElementById('focusDesc');
+const focusStats = document.getElementById('focusStats');
+const focusEnter = document.getElementById('focusEnter');
+const focusSoon = document.getElementById('focusSoon');
+const planetBar = document.getElementById('planetBar');
+
+const homeCam = { theta: 0.85, phi: 1.08, dist: 14, tTheta: 0.85, tPhi: 1.08, tDist: 14 };
+const lookCurrent = new THREE.Vector3();
+const lookTarget = new THREE.Vector3();
+const raycaster = new THREE.Raycaster();
+const scaleVec = new THREE.Vector3();
+let focusedDef = null;
+let hoverDef = null;
+let lastInteract = -10;
+let tipX = 0, tipY = 0;
+
+function positionTip() {
+  planetTip.style.left = `${Math.min(tipX + 16, window.innerWidth - 250)}px`;
+  planetTip.style.top = `${Math.min(tipY + 14, window.innerHeight - 120)}px`;
+}
+
+function showTip(def) {
+  tipName.textContent = `${def.zh} ${def.en}`;
+  tipDesc.textContent = def.desc;
+  tipBadge.textContent = def.page ? 'CLICK TO FOCUS · 可進入' : 'COMING SOON';
+  planetTip.hidden = false;
+  positionTip();
+}
+
+function hideTip() {
+  planetTip.hidden = true;
+}
+
+function setHover(def) {
+  if (def === hoverDef) return;
+  hoverDef = def;
+  ALL_DEFS.forEach((d) => {
+    if (d._orbitMat) d._orbitMat.opacity = d === def ? 0.55 : 0.16;
+  });
+  if (def && !focusedDef) showTip(def);
+  else hideTip();
+}
+
+function focusPlanet(def) {
+  focusedDef = def;
+  hideTip();
+  homeCam.tDist = Math.max(def.size * 7, 1.5);
+  focusTag.textContent = `${def.en} · ${def.dist}`;
+  focusName.textContent = def.zh;
+  focusDesc.textContent = def.desc;
+  focusStats.innerHTML = def.facts
+    .map((f) => `<li><span>${f[0]}</span><span>${f[1]}</span></li>`)
+    .join('');
+  focusEnter.hidden = !def.page;
+  focusSoon.hidden = !!def.page;
+  focusCard.hidden = false;
+  lastInteract = clock.getElapsedTime();
+}
+
+function unfocus(skipCam) {
+  focusedDef = null;
+  focusCard.hidden = true;
+  if (!skipCam) homeCam.tDist = Math.max(homeCam.tDist, 12);
+}
+
+/* ---- 首頁每幀更新 ---- */
+function homeTick(t) {
+  // 公轉與自轉
+  SOLAR_DEFS.forEach((def) => {
+    def._pivot.rotation.y += def.speed * 0.0035;
+    def._spin.rotation.y = t * 0.15;
+  });
+  if (lunaPivotHome) lunaPivotHome.rotation.y += 0.012;
+  solarSun.rotation.y = t * 0.02;
+  solarMats.forEach((m) => { m.uniforms.uTime.value = t; });
+
+  // 真實比例：行星縮放至與太陽的真實比例
+  SOLAR_DEFS.forEach((def) => {
+    const target = realScale ? (0.85 * REAL_KM[def.key]) / 696000 / def.size : 1;
+    const cur = def._spin.scale.x;
+    const next = cur + (target - cur) * 0.06;
+    def._spin.scale.setScalar(next);
+    if (def._ring) def._ring.scale.setScalar(next);
+  });
+
+  // hover 偵測
+  raycaster.setFromCamera({ x: mouse.x, y: -mouse.y }, camera);
+  const hit = raycaster.intersectObjects(hitTargets, false)[0];
+  setHover(hit ? hit.object.userData.def : null);
+  canvas.style.cursor = hoverDef ? 'pointer' : 'grab';
+
+  // hover / 聚焦時行星輕微放大（月球同時吃真實比例係數）
+  ALL_DEFS.forEach((def) => {
+    let s = def === hoverDef || def === focusedDef ? 1.18 : 1.0;
+    if (realScale && def.key === 'luna') s *= (0.85 * REAL_KM.luna) / 696000 / def.size;
+    def._carrier.scale.lerp(scaleVec.set(s, s, s), 0.12);
+  });
+
+  // 閒置 5 秒後自動巡航
+  if (t - lastInteract > 5 && !focusedDef) homeCam.tTheta += 0.0009;
+
+  homeCam.theta += (homeCam.tTheta - homeCam.theta) * 0.07;
+  homeCam.phi += (homeCam.tPhi - homeCam.phi) * 0.07;
+  homeCam.dist += (homeCam.tDist - homeCam.dist) * 0.07;
+
+  if (focusedDef) focusedDef._carrier.getWorldPosition(lookTarget);
+  else lookTarget.set(0, 0, 0);
+  lookCurrent.lerp(lookTarget, 0.07);
+
+  camera.position.set(
+    lookCurrent.x + homeCam.dist * Math.sin(homeCam.phi) * Math.cos(homeCam.theta),
+    lookCurrent.y + homeCam.dist * Math.cos(homeCam.phi),
+    lookCurrent.z + homeCam.dist * Math.sin(homeCam.phi) * Math.sin(homeCam.theta)
+  );
+  camera.lookAt(lookCurrent);
+
+  hudCoords.textContent = `CAM ${(homeCam.dist / 3.6).toFixed(2)} AU`;
+}
+
+/* ---- 拖曳旋轉 / 滾輪縮放 / 雙指縮放 / 點擊 ---- */
+let dragging = false;
+let dragDist = 0;
+let lastPX = 0, lastPY = 0;
+let pinchLast = 0;
+const pointers = new Map();
+
+function isUI(e) {
+  return e.target instanceof Element
+    && e.target.closest('button, .focus-card, .planet-nav, .planet-bar, .hud');
+}
+
+window.addEventListener('pointerdown', (e) => {
+  if (isUI(e)) return;
+  if (!homeActive) {
+    // 行星頁：在文字區外拖曳可轉動星球
+    if (e.target instanceof Element && e.target.closest('.content, .hero, .story, .calc')) return;
+    planetDragging = true;
+    dragDist = 0;
+    lastPX = e.clientX;
+    lastPY = e.clientY;
+    spinVel = 0;
+    userSpin.goal = null;
+    return;
+  }
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  dragging = true;
+  dragDist = 0;
+  lastPX = e.clientX;
+  lastPY = e.clientY;
+  lastInteract = clock.getElapsedTime();
+});
+
+window.addEventListener('pointermove', (e) => {
+  tipX = e.clientX;
+  tipY = e.clientY;
+  if (!planetTip.hidden) positionTip();
+  if (!homeActive) {
+    if (planetDragging) {
+      const dx = e.clientX - lastPX;
+      const dy = e.clientY - lastPY;
+      dragDist += Math.abs(dx) + Math.abs(dy);
+      userSpin.y += dx * 0.006;
+      spinVel = dx * 0.006;
+      userSpin.tilt = Math.min(0.5, Math.max(-0.5, userSpin.tilt + dy * 0.002));
+      lastPX = e.clientX;
+      lastPY = e.clientY;
+    }
+    return;
+  }
+  if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+  if (pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    const d = Math.hypot(a.x - b.x, a.y - b.y);
+    if (pinchLast) {
+      homeCam.tDist = Math.min(26, Math.max(2.2, homeCam.tDist * (pinchLast / d)));
+    }
+    pinchLast = d;
+    lastInteract = clock.getElapsedTime();
+    return;
+  }
+
+  if (dragging) {
+    const dx = e.clientX - lastPX;
+    const dy = e.clientY - lastPY;
+    dragDist += Math.abs(dx) + Math.abs(dy);
+    homeCam.tTheta += dx * 0.005;
+    homeCam.tPhi = Math.min(2.7, Math.max(0.3, homeCam.tPhi - dy * 0.004));
+    lastPX = e.clientX;
+    lastPY = e.clientY;
+    lastInteract = clock.getElapsedTime();
+  }
+});
+
+window.addEventListener('pointerup', (e) => {
+  pointers.delete(e.pointerId);
+  if (pointers.size < 2) pinchLast = 0;
+  if (!homeActive) {
+    if (planetDragging) {
+      planetDragging = false;
+      if (dragDist < 7 && currentPins) pinTap(e);
+    }
+    return;
+  }
+  if (!dragging) return;
+  dragging = false;
+  if (dragDist < 7 && !isUI(e)) handleTap(e);
+});
+
+window.addEventListener('wheel', (e) => {
+  if (!homeActive || isUI(e)) return;
+  homeCam.tDist = Math.min(26, Math.max(2.2, homeCam.tDist * (1 + e.deltaY * 0.0012)));
+  lastInteract = clock.getElapsedTime();
+}, { passive: true });
+
+function handleTap(e) {
+  const nx = (e.clientX / window.innerWidth - 0.5) * 2;
+  const ny = -(e.clientY / window.innerHeight - 0.5) * 2;
+  raycaster.setFromCamera({ x: nx, y: ny }, camera);
+  const hit = raycaster.intersectObjects(hitTargets, false)[0];
+  const def = hit ? hit.object.userData.def : null;
+  if (!def) {
+    if (focusedDef) unfocus();
+    return;
+  }
+  if (def === focusedDef && def.page) {
+    setPlanet(def.page);
+    return;
+  }
+  focusPlanet(def);
+}
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && homeActive && focusedDef) unfocus();
+});
+
+focusEnter.addEventListener('click', () => {
+  if (focusedDef && focusedDef.page) setPlanet(focusedDef.page);
+});
+document.getElementById('focusClose').addEventListener('click', () => unfocus());
+
+// 底部快速跳轉列
+ALL_DEFS.forEach((def) => {
+  const b = document.createElement('button');
+  b.textContent = def.zh;
+  b.addEventListener('click', () => {
+    if (!homeActive) return;
+    focusPlanet(def);
+  });
+  planetBar.appendChild(b);
+});
+
+/* ================================================================
+   功能 5：地標 pin 的 hover 與點擊
+   ================================================================ */
+let pinHover = null;
+function setPinHover(lm) {
+  if (lm === pinHover) return;
+  pinHover = lm;
+  if (lm) {
+    tipName.textContent = `${lm.zh} ${lm.en}`;
+    tipDesc.textContent = lm.desc;
+    tipBadge.textContent = 'CLICK TO CENTER · 點擊轉到正面';
+    planetTip.hidden = false;
+    positionTip();
+  } else {
+    planetTip.hidden = true;
+  }
+}
+function pinTap() {
+  if (!pinHover) return;
+  // 旋轉星球，把地標轉到正對鏡頭
+  const a = Math.atan2(pinHover._pos.x, pinHover._pos.z);
+  const baseNow = mars.rotation.y - userSpin.y;
+  let goal = -a - baseNow;
+  goal += Math.round((userSpin.y - goal) / (Math.PI * 2)) * Math.PI * 2;
+  userSpin.goal = goal;
+  userSpin.tilt = 0;
+}
+
+/* ================================================================
+   功能 3：真實比例切換
+   ================================================================ */
+const scaleToggle = document.getElementById('scaleToggle');
+const scaleBtn = document.getElementById('scaleBtn');
+const scaleNote = document.getElementById('scaleNote');
+scaleBtn.addEventListener('click', () => {
+  realScale = !realScale;
+  scaleBtn.classList.toggle('active', realScale);
+  scaleNote.hidden = !realScale;
+  lastInteract = clock.getElapsedTime();
+});
+
+/* ================================================================
+   功能 1：個人星球檔案換算器
+   ================================================================ */
+const GRAV = { mars: 0.379, earth: 1, moon: 0.166, sun: 27.9 };
+function fmtNum(n, d = 0) {
+  return n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+function updateCalc(box) {
+  const key = box.dataset.calc;
+  const w = parseFloat(box.querySelector('.calc__w').value);
+  const b = box.querySelector('.calc__b').value;
+  const out = box.querySelector('.calc__out');
+  const lines = [];
+
+  if (w > 0 && w < 1000) {
+    lines.push(['你的體重', `${fmtNum(w * GRAV[key], 1)} kg`]);
+    lines.push(['', {
+      mars: '火星重力只有地球的 38%',
+      earth: '家鄉的標準重量',
+      moon: '在這裡你能輕鬆跳 6 倍高',
+      sun: '被壓成 28 倍重——千萬別站上去',
+    }[key]]);
+  }
+
+  if (b) {
+    const days = (Date.now() - new Date(b).getTime()) / 86400000;
+    if (days > 0) {
+      if (key === 'mars') {
+        const my = days / 686.98;
+        const next = new Date(new Date(b).getTime() + (Math.floor(my) + 1) * 686.98 * 86400000);
+        lines.push(['火星年齡', `${fmtNum(my, 1)} 歲`]);
+        lines.push(['下次火星生日', next.toISOString().slice(0, 10)]);
+      } else if (key === 'earth') {
+        lines.push(['你已繞太陽', `${fmtNum(days / 365.25, 1)} 圈`]);
+        lines.push(['出生至今', `${fmtNum(days, 0)} 天`]);
+      } else if (key === 'moon') {
+        lines.push(['月亮繞地球', `${fmtNum(days / 27.32, 0)} 圈`]);
+        lines.push(['你看過約', `${fmtNum(days / 29.53, 0)} 次滿月`]);
+      } else if (key === 'sun') {
+        lines.push(['你已繞太陽', `${fmtNum(days / 365.25, 1)} 圈`]);
+        lines.push(['你身上的氫', '46 億年前就在這裡']);
+      }
+    }
+  }
+
+  if (!lines.length) {
+    out.innerHTML = '<p class="calc__hint">輸入體重或生日，看看你在這裡會變成什麼樣子。</p>';
+  } else {
+    out.innerHTML = lines
+      .map((l) => `<div class="calc__line"><span>${l[0]}</span><span>${l[1]}</span></div>`)
+      .join('');
+  }
+}
+document.querySelectorAll('.calc').forEach((box) => {
+  box.querySelectorAll('input').forEach((inp) =>
+    inp.addEventListener('input', () => updateCalc(box))
+  );
+  updateCalc(box);
+});
+
+// 開站進入太陽系
+setPlanet('home');
+
+/* ---- resize ---- */
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+/* ---- 入場結束 ---- */
+window.addEventListener('load', () => {
+  setTimeout(() => document.getElementById('intro').classList.add('done'), 700);
+});
+setTimeout(() => document.getElementById('intro').classList.add('done'), 2500);
+</script>
+</body>
+</html>
