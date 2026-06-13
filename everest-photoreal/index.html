@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>聖母峰 · 照片級地形</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #05080d; overflow: hidden; font-family: "IBM Plex Mono", ui-monospace, monospace; }
+    #scene { display: block; width: 100%; height: 100%; }
+    #loading {
+      position: fixed; inset: 0; display: flex; flex-direction: column; gap: 1rem;
+      align-items: center; justify-content: center; color: #cde2ff; background: #05080d;
+      letter-spacing: 0.14em; font-size: 0.8rem; z-index: 10; transition: opacity 0.8s ease;
+    }
+    #loading.done { opacity: 0; pointer-events: none; }
+    #bar { width: 200px; height: 2px; background: rgba(150,190,255,0.2); overflow: hidden; }
+    #bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg,#6ca8ff,#dff0ff); transition: width 0.3s; }
+    .hud {
+      position: fixed; z-index: 5; color: #eaf3ff; text-shadow: 0 2px 16px rgba(0,0,0,0.7);
+      letter-spacing: 0.14em; pointer-events: none;
+    }
+    #title { left: 2.4rem; bottom: 2.4rem; }
+    #title h1 { margin: 0; font-size: clamp(2.2rem, 6vw, 4rem); font-weight: 800; letter-spacing: 0.04em; }
+    #title .sub { font-size: 0.72rem; color: #b9d2f5; margin-top: 0.5rem; }
+    #tag { right: 2.4rem; top: 1.8rem; font-size: 0.66rem; color: #9fc0ee; text-align: right; }
+    #hint { left: 50%; bottom: 1.2rem; transform: translateX(-50%); font-size: 0.6rem; color: rgba(200,220,255,0.5); }
+  </style>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+  <div id="loading"><div>載入真實地形 · 環境光 · PBR 材質</div><div id="bar"><i></i></div></div>
+  <div class="hud" id="title"><h1>聖母峰</h1><div class="sub">MOUNT EVEREST · 8,848 M · 真實 DEM 地形</div></div>
+  <div class="hud" id="tag">REAL DEM (SRTM/TERRARIUM) · HDRI IBL · PBR · ACES + BLOOM + DOF</div>
+  <div class="hud" id="hint">拖曳環顧 · 滾輪縮放</div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
