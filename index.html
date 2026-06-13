@@ -337,6 +337,31 @@ body::before {
 .hud--top { top: 0; }
 .hud--bottom { bottom: 0; }
 .hud__brand { color: var(--rust); }
+.hud__left { display: inline-flex; align-items: center; gap: 0.85rem; pointer-events: none; }
+
+/* 聲音開關 */
+.sound-toggle {
+  pointer-events: auto;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--hairline);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--rust);
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+.sound-toggle:hover { border-color: var(--rust); box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.5); }
+.sound-toggle.muted { color: var(--dust); }
+.sound-toggle svg { width: 16px; height: 16px; overflow: visible; }
+.sound-toggle .wave { transition: opacity 0.25s; }
+.sound-toggle.muted .wave { opacity: 0; }
+.sound-toggle .slash { opacity: 0; transition: opacity 0.25s; }
+.sound-toggle.muted .slash { opacity: 1; }
 
 /* ---- 行星切換選單 ---- */
 .planet-nav {
@@ -1093,7 +1118,17 @@ body.earth .feature { border-left-width: 3px; }
 
 <!-- HUD 介面 -->
 <header class="hud hud--top">
-  <span class="mono hud__brand" id="hudBrand">MARS//MISSION</span>
+  <span class="hud__left">
+    <button class="sound-toggle" id="soundToggle" aria-label="聲音開關" title="聲音 開 / 關">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor" stroke="none" />
+        <path class="wave" d="M15.5 8.5a5 5 0 0 1 0 7" />
+        <path class="wave" d="M18.5 6a8.5 8.5 0 0 1 0 12" />
+        <line class="slash" x1="3" y1="2.5" x2="21.5" y2="21" />
+      </svg>
+    </button>
+    <span class="mono hud__brand" id="hudBrand">MARS//MISSION</span>
+  </span>
   <span class="mono hud__coords" id="hudCoords">LAT 00.00 · LON 00.00</span>
 </header>
 <footer class="hud hud--bottom">
@@ -3133,6 +3168,7 @@ function flightTick() {
   const flying = Math.abs(shuttleVel) > 0.18;
   flightpath.classList.toggle('flying', flying);
   flightpath.style.setProperty('--flame', (flying ? 0.5 + speed * 1.3 : 0).toFixed(2));
+  sndThrust(flying ? speed : 0);
 
   const bank = Math.max(-14, Math.min(14, -shuttleVel * 2.6));
   shuttle.style.transform = `translate(-50%, ${shuttleY}px) rotate(${bank}deg)`;
@@ -3343,6 +3379,8 @@ function applyPlanet(name) {
   // 重新計算章節、重建航道
   sections = [...document.querySelectorAll('main:not([hidden]) .panel')];
   buildFlightpath();
+
+  sndPlanet(name); // 切換環境音氛圍
 }
 
 /* ---- 切換轉場：記憶各星球滾動位置 + 淡入淡出 ---- */
@@ -3367,6 +3405,7 @@ function setPlanet(name) {
   switching = true;
   scrollMemory[currentPlanet] = window.scrollY;
   fader.classList.add('on');
+  sndWhoosh(); // 切換星球的咻聲
 
   setTimeout(() => {
     currentPlanet = name;
@@ -3433,7 +3472,7 @@ function setHover(def) {
   ALL_DEFS.forEach((d) => {
     if (d._orbitMat) d._orbitMat.opacity = d === def ? 0.55 : 0.16;
   });
-  if (def && !focusedDef) showTip(def);
+  if (def && !focusedDef) { showTip(def); sndHover(); }
   else hideTip();
 }
 
@@ -3451,6 +3490,7 @@ function focusPlanet(def) {
   focusSoon.hidden = !!def.page;
   focusCard.hidden = false;
   lastInteract = clock.getElapsedTime();
+  sndChime(); // 聚焦行星的點綴音
 }
 
 function unfocus(skipCam) {
@@ -3745,6 +3785,182 @@ document.querySelectorAll('.calc').forEach((box) => {
     inp.addEventListener('input', () => updateCalc(box))
   );
   updateCalc(box);
+});
+
+/* ================================================================
+   太空音效引擎（Web Audio · 程式即時合成 · 無外部檔案）
+   ================================================================ */
+let actx = null, master = null, sendDelay = null, amb = null, thrustNode = null;
+let audioStarted = false;
+let audioMuted = localStorage.getItem('ss_muted') === '1'; // 預設開
+let lastBlip = 0;
+const AMBIENT_TARGET = 0.85;
+
+// 各天體環境音氛圍參數
+const AMBIENT = {
+  home:  { root: 49, chord: [1, 1.5, 2, 3], cutoff: 700,  noise: 0.06, nQ: 0.6, nHz: 600,  lfo: 0.05, gain: 0.16, sub: 0.10 },
+  mars:  { root: 55, chord: [1, 1.2, 1.5],  cutoff: 520,  noise: 0.11, nQ: 1.2, nHz: 900,  lfo: 0.07, gain: 0.17, sub: 0.12 },
+  earth: { root: 65, chord: [1, 1.25, 1.5], cutoff: 950,  noise: 0.05, nQ: 0.8, nHz: 500,  lfo: 0.05, gain: 0.16, sub: 0.08 },
+  moon:  { root: 98, chord: [1, 1.5, 2],    cutoff: 1150, noise: 0.04, nQ: 1.6, nHz: 1700, lfo: 0.04, gain: 0.14, sub: 0.05 },
+  sun:   { root: 41, chord: [1, 1.5, 2],    cutoff: 600,  noise: 0.12, nQ: 0.5, nHz: 220,  lfo: 0.10, gain: 0.18, sub: 0.17 },
+};
+
+function makeNoise() {
+  const len = actx.sampleRate * 2;
+  const buf = actx.createBuffer(1, len, actx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  return buf;
+}
+
+function initAudio() {
+  if (actx) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  actx = new AC();
+  master = actx.createGain();
+  master.gain.value = 0;
+  // 限幅器，避免疊加爆音
+  const comp = actx.createDynamicsCompressor();
+  comp.threshold.value = -10; comp.ratio.value = 12; comp.attack.value = 0.003; comp.release.value = 0.25;
+  master.connect(comp); comp.connect(actx.destination);
+  // 空間延遲（太空回響）
+  sendDelay = actx.createDelay(1.0);
+  sendDelay.delayTime.value = 0.32;
+  const fb = actx.createGain(); fb.gain.value = 0.3;
+  const wet = actx.createGain(); wet.gain.value = 0.32;
+  sendDelay.connect(fb); fb.connect(sendDelay); sendDelay.connect(wet); wet.connect(master);
+  buildAmbient();
+}
+
+function buildAmbient() {
+  const out = actx.createGain(); out.gain.value = 0.16;
+  out.connect(master); out.connect(sendDelay);
+  const filter = actx.createBiquadFilter();
+  filter.type = 'lowpass'; filter.frequency.value = 700;
+  filter.connect(out);
+
+  const oscs = [];
+  for (let i = 0; i < 3; i++) {
+    const o = actx.createOscillator();
+    o.type = i === 0 ? 'triangle' : 'sine';
+    const g = actx.createGain(); g.gain.value = 0.4;
+    o.connect(g); g.connect(filter); o.start();
+    oscs.push(o);
+  }
+  const sub = actx.createOscillator(); sub.type = 'sine';
+  const subG = actx.createGain(); subG.gain.value = 0.1;
+  sub.connect(subG); subG.connect(out); sub.start();
+
+  const noise = actx.createBufferSource(); noise.buffer = makeNoise(); noise.loop = true;
+  const nFilter = actx.createBiquadFilter(); nFilter.type = 'bandpass'; nFilter.frequency.value = 700; nFilter.Q.value = 1;
+  const nGain = actx.createGain(); nGain.gain.value = 0.06;
+  noise.connect(nFilter); nFilter.connect(nGain); nGain.connect(out); noise.start();
+
+  const lfo = actx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.06;
+  const lfoG = actx.createGain(); lfoG.gain.value = 200;
+  lfo.connect(lfoG); lfoG.connect(filter.frequency); lfo.start();
+
+  amb = { out, filter, oscs, subG, sub, nFilter, nGain, lfo };
+}
+
+function sndPlanet(key) {
+  if (!actx || !amb) return;
+  const p = AMBIENT[key] || AMBIENT.home;
+  const t = actx.currentTime, R = 0.9;
+  amb.oscs.forEach((o, i) => {
+    o.frequency.setTargetAtTime(p.root * (p.chord[i] ?? p.chord[p.chord.length - 1]), t, R);
+    o.detune.setTargetAtTime((i - 1) * 6, t, R);
+  });
+  amb.sub.frequency.setTargetAtTime(p.root / 2, t, R);
+  amb.subG.gain.setTargetAtTime(p.sub, t, R);
+  amb.filter.frequency.setTargetAtTime(p.cutoff, t, R);
+  amb.nFilter.frequency.setTargetAtTime(p.nHz, t, R);
+  amb.nFilter.Q.setTargetAtTime(p.nQ, t, R);
+  amb.nGain.gain.setTargetAtTime(p.noise, t, R);
+  amb.lfo.frequency.setTargetAtTime(p.lfo, t, R);
+  amb.out.gain.setTargetAtTime(p.gain, t, R);
+}
+
+function blip(freq, dur, vol, type = 'sine') {
+  if (!actx || audioMuted) return;
+  const o = actx.createOscillator(); o.type = type; o.frequency.value = freq;
+  const g = actx.createGain();
+  o.connect(g); g.connect(master);
+  const t = actx.currentTime;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(vol, t + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+function sndHover() {
+  const now = performance.now();
+  if (now - lastBlip < 70) return;
+  lastBlip = now;
+  blip(2000, 0.045, 0.025);
+}
+function sndChime() {
+  if (!actx || audioMuted) return;
+  blip(880, 0.5, 0.05, 'sine');
+  setTimeout(() => blip(1320, 0.6, 0.035, 'sine'), 50);
+}
+function sndWhoosh() {
+  if (!actx || audioMuted) return;
+  const noise = actx.createBufferSource(); noise.buffer = makeNoise();
+  const bp = actx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.2;
+  const g = actx.createGain(); g.gain.value = 0.0001;
+  noise.connect(bp); bp.connect(g); g.connect(master);
+  const t = actx.currentTime;
+  bp.frequency.setValueAtTime(300, t);
+  bp.frequency.exponentialRampToValueAtTime(2600, t + 0.25);
+  bp.frequency.exponentialRampToValueAtTime(420, t + 0.6);
+  g.gain.linearRampToValueAtTime(0.1, t + 0.08);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+  noise.start(t); noise.stop(t + 0.65);
+}
+function sndThrust(level) {
+  if (!actx) return;
+  if (!thrustNode) {
+    const noise = actx.createBufferSource(); noise.buffer = makeNoise(); noise.loop = true;
+    const bp = actx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 420; bp.Q.value = 0.7;
+    const g = actx.createGain(); g.gain.value = 0;
+    noise.connect(bp); bp.connect(g); g.connect(master); noise.start();
+    thrustNode = { g };
+  }
+  const target = audioMuted ? 0 : Math.min(0.08, level * 0.08);
+  thrustNode.g.gain.setTargetAtTime(target, actx.currentTime, 0.08);
+}
+
+function startAudioOnce() {
+  if (audioStarted) return;
+  audioStarted = true;
+  initAudio();
+  if (actx.state === 'suspended') actx.resume();
+  sndPlanet(currentPlanet || 'home');
+  if (!audioMuted) {
+    master.gain.setTargetAtTime(AMBIENT_TARGET, actx.currentTime, 1.6);
+    setTimeout(sndChime, 350);
+  }
+}
+['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach((ev) =>
+  window.addEventListener(ev, startAudioOnce, { once: true, passive: true })
+);
+
+// 任何按鈕 / 節點 hover 都有滴答聲
+document.addEventListener('pointerover', (e) => {
+  if (e.target instanceof Element && e.target.closest('button, .flightpath__node')) sndHover();
+});
+
+// 聲音開關
+const soundToggle = document.getElementById('soundToggle');
+soundToggle.classList.toggle('muted', audioMuted);
+soundToggle.addEventListener('click', (e) => {
+  e.stopPropagation();
+  audioMuted = !audioMuted;
+  localStorage.setItem('ss_muted', audioMuted ? '1' : '0');
+  soundToggle.classList.toggle('muted', audioMuted);
+  if (!audioStarted) { startAudioOnce(); return; }
+  master.gain.setTargetAtTime(audioMuted ? 0 : AMBIENT_TARGET, actx.currentTime, 0.3);
+  if (audioMuted && thrustNode) thrustNode.g.gain.setTargetAtTime(0, actx.currentTime, 0.1);
 });
 
 // 開站進入太陽系
