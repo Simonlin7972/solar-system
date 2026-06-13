@@ -96,7 +96,7 @@ body.home {
   --glow-white: #f4f8ff;
   overflow: hidden;
 }
-body.home .dots,
+body.home .flightpath,
 body.home .progress,
 body.home #hudScroll { display: none; }
 body.home #scene { touch-action: none; }
@@ -371,32 +371,149 @@ body::before {
   box-shadow: 0 0 18px rgba(var(--accent-rgb), 0.55);
 }
 
-/* ---- section dots ---- */
-.dots {
+/* ---- 太空梭航道導覽 ---- */
+.flightpath {
   position: fixed;
-  right: 1.6rem;
-  top: 50%;
-  transform: translateY(-50%);
+  right: 2rem;
+  top: 18vh;
+  height: 64vh;
+  width: 46px;
   z-index: 20;
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
+  --flame: 0;
 }
-.dots button {
-  width: 8px;
-  height: 8px;
+/* 航道線 */
+.flightpath__line {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  transform: translateX(-50%);
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(var(--accent-rgb), 0.35) 12%,
+    rgba(var(--accent-rgb), 0.35) 88%,
+    transparent
+  );
+}
+.flightpath__line::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  transform: translateX(-50%);
+  background: linear-gradient(to bottom, transparent, rgba(var(--accent-rgb), 0.5), transparent);
+  -webkit-mask: repeating-linear-gradient(to bottom, #000 0 4px, transparent 4px 11px);
+  mask: repeating-linear-gradient(to bottom, #000 0 4px, transparent 4px 11px);
+  opacity: 0.5;
+}
+/* 章節節點 */
+.flightpath__node {
+  position: absolute;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  padding: 0;
   border-radius: 50%;
   border: 1px solid var(--dust);
-  background: transparent;
+  background: var(--bg);
+  transform: translate(-50%, -50%) rotate(45deg);
   cursor: pointer;
-  padding: 0;
-  transition: background 0.4s, transform 0.4s, box-shadow 0.4s;
+  transition: border-color 0.4s, background 0.4s, box-shadow 0.4s, width 0.3s, height 0.3s;
 }
-.dots button.active {
-  background: var(--rust);
+.flightpath__node:hover { border-color: var(--amber); }
+.flightpath__node.passed {
   border-color: var(--rust);
-  transform: scale(1.4);
-  box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.8);
+  background: var(--rust);
+  box-shadow: 0 0 9px rgba(var(--accent-rgb), 0.8);
+}
+.flightpath__node.active {
+  width: 10px;
+  height: 10px;
+  border-color: var(--amber);
+}
+/* hover 章節名 */
+.flightpath__label {
+  position: absolute;
+  right: 100%;
+  margin-right: 16px;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  color: var(--amber);
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--hairline);
+  background: rgba(2, 3, 8, 0.78);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.flightpath__label.show { opacity: 1; }
+/* 太空梭 */
+.shuttle {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 40px;
+  height: 74px;
+  margin-top: -37px;
+  z-index: 10;
+  will-change: transform;
+}
+.shuttle__craft {
+  width: 100%;
+  height: 100%;
+  transform: rotate(180deg); /* 機頭朝下 */
+  filter: drop-shadow(0 0 7px rgba(var(--accent-rgb), 0.55));
+  animation: hover-bob 2.4s ease-in-out infinite;
+}
+.flightpath.flying .shuttle__craft { animation: none; }
+@keyframes hover-bob {
+  0%, 100% { transform: rotate(180deg) translateY(0); }
+  50% { transform: rotate(180deg) translateY(2px); }
+}
+/* 引擎尾焰（機頭朝下，尾焰在上方） */
+.shuttle__flame {
+  position: absolute;
+  top: 14%;
+  width: 7px;
+  height: 22px;
+  transform: translate(-50%, -100%) scaleY(var(--flame));
+  transform-origin: bottom center;
+  background: linear-gradient(to top, #fff6d8, #ffd166 32%, #ff7a1a 68%, transparent);
+  clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+  opacity: var(--flame);
+  filter: blur(1px);
+  animation: flame-flicker 0.09s steps(2) infinite;
+}
+.shuttle__flame--c { left: 50%; height: 26px; width: 8px; }
+.shuttle__flame--l { left: 25%; }
+.shuttle__flame--r { left: 75%; }
+@keyframes flame-flicker {
+  50% { filter: blur(2.4px) brightness(1.3); }
+}
+/* 星塵粒子拖尾 */
+.flightpath__dust {
+  position: absolute;
+  left: 50%;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 5px rgba(var(--accent-rgb), 0.9);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: dust-fade 0.7s ease-out forwards;
+}
+@keyframes dust-fade {
+  0% { opacity: 0.9; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.3); }
 }
 
 /* ---- progress bar ---- */
@@ -923,7 +1040,7 @@ body.earth .feature { border-left-width: 3px; }
   .stats { grid-template-columns: 1fr 1fr; }
   .hud { padding: 1rem 1.2rem; }
   .hud__coords { display: none; }
-  .dots { right: 0.8rem; }
+  .flightpath { right: 0.5rem; width: 38px; transform: scale(0.82); transform-origin: right center; }
   .hero__en { letter-spacing: 0.6em; text-indent: 0.6em; }
   .content { max-width: 100%; }
 }
@@ -993,8 +1110,83 @@ body.earth .feature { border-left-width: 3px; }
   <button id="btnSun">太陽 SUN</button>
 </nav>
 
-<!-- 區段導覽點（依星球章節數動態生成） -->
-<nav class="dots" id="dots" aria-label="章節導覽"></nav>
+<!-- 太空梭航道導覽（節點依星球章節數動態生成） -->
+<nav class="flightpath" id="flightpath" aria-label="章節導覽">
+  <div class="flightpath__line"></div>
+  <div class="flightpath__label" id="fpLabel"></div>
+  <div class="shuttle" id="shuttle">
+    <svg class="shuttle__craft" viewBox="0 0 48 88" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="shMetal" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#ffffff" />
+          <stop offset="0.5" stop-color="#edf0f4" />
+          <stop offset="1" stop-color="#b6bbc4" />
+        </linearGradient>
+        <linearGradient id="shMetal2" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#f6f8fb" />
+          <stop offset="0.5" stop-color="#dde1e8" />
+          <stop offset="1" stop-color="#a7adb7" />
+        </linearGradient>
+        <linearGradient id="shOrb" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#ffffff" />
+          <stop offset="0.55" stop-color="#f1f3f7" />
+          <stop offset="1" stop-color="#caced6" />
+        </linearGradient>
+      </defs>
+
+      <!-- 左固體火箭推進器 SRB -->
+      <g stroke="#9aa1ab" stroke-width="0.5">
+        <path d="M10 13 L7.6 24 L12.4 24 Z" fill="url(#shMetal2)" />
+        <rect x="7.6" y="23" width="4.8" height="49" rx="1.3" fill="url(#shMetal2)" />
+        <path d="M8 72 L12 72 L11 80 L9 80 Z" fill="#8f96a0" />
+        <line x1="7.8" y1="40" x2="12.2" y2="40" />
+        <line x1="7.8" y1="56" x2="12.2" y2="56" />
+      </g>
+      <!-- 右固體火箭推進器 SRB -->
+      <g stroke="#9aa1ab" stroke-width="0.5">
+        <path d="M38 13 L35.6 24 L40.4 24 Z" fill="url(#shMetal2)" />
+        <rect x="35.6" y="23" width="4.8" height="49" rx="1.3" fill="url(#shMetal2)" />
+        <path d="M36 72 L40 72 L39 80 L37 80 Z" fill="#8f96a0" />
+        <line x1="35.8" y1="40" x2="40.2" y2="40" />
+        <line x1="35.8" y1="56" x2="40.2" y2="56" />
+      </g>
+
+      <!-- 外儲箱 ET（中央，後方） -->
+      <path d="M24 2 C20 7 18 12 18 17 L18 66 C18 70 21 72 24 72 C27 72 30 70 30 66 L30 17 C30 12 28 7 24 2 Z"
+            fill="url(#shMetal)" stroke="#9aa1ab" stroke-width="0.6" />
+      <line x1="18.4" y1="32" x2="29.6" y2="32" stroke="#bdc2ca" stroke-width="0.5" />
+      <line x1="18.4" y1="52" x2="29.6" y2="52" stroke="#bdc2ca" stroke-width="0.5" />
+
+      <!-- 軌道器 Orbiter（前方，中央） -->
+      <!-- 垂直尾翼 -->
+      <path d="M24 25 L22.4 39 L25.6 39 Z" fill="#dde1e8" stroke="#9aa1ab" stroke-width="0.5" />
+      <!-- 機身 -->
+      <path d="M24 21 C21.4 23 20.4 27.5 20.4 34 L20.4 58 L27.6 58 L27.6 34 C27.6 27.5 26.6 23 24 21 Z"
+            fill="url(#shOrb)" stroke="#7d838d" stroke-width="0.7" />
+      <!-- 三角翼 + 黑色前緣 -->
+      <path d="M20.4 55 L9.5 70 L9.5 73.5 L20.4 67 Z" fill="url(#shOrb)" stroke="#33363d" stroke-width="1" />
+      <path d="M27.6 55 L38.5 70 L38.5 73.5 L27.6 67 Z" fill="url(#shOrb)" stroke="#33363d" stroke-width="1" />
+      <!-- 機腹隔熱區 -->
+      <path d="M20.4 58 L20.4 68 C20.4 71 23 72.5 24 72.5 C25 72.5 27.6 71 27.6 68 L27.6 58 Z"
+            fill="#e9ecf0" stroke="#7d838d" stroke-width="0.6" />
+      <!-- 駕駛艙窗 -->
+      <path d="M24 22.5 C22.6 23.6 22.1 25.2 22.1 26.8 L25.9 26.8 C25.9 25.2 25.4 23.6 24 22.5 Z" fill="#2c333d" />
+      <!-- 機身細節線 + 國旗色塊 -->
+      <line x1="24" y1="30" x2="24" y2="56" stroke="#c4c9d0" stroke-width="0.5" />
+      <rect x="25.2" y="45" width="2.2" height="1.5" fill="#c0c4cb" />
+
+      <!-- 軌道器三主引擎噴嘴 -->
+      <g fill="#969ca6" stroke="#777d87" stroke-width="0.4">
+        <path d="M21 72 L20.1 79 L22.5 79 L22.1 72 Z" />
+        <path d="M23 72.5 L22.4 80 L25.6 80 L25 72.5 Z" />
+        <path d="M26 72 L25.9 79 L28.3 79 L27.4 72 Z" />
+      </g>
+    </svg>
+    <span class="shuttle__flame shuttle__flame--l"></span>
+    <span class="shuttle__flame shuttle__flame--c"></span>
+    <span class="shuttle__flame shuttle__flame--r"></span>
+  </div>
+</nav>
 
 <div class="progress"><div class="progress__bar" id="progressBar"></div></div>
 
@@ -2858,12 +3050,12 @@ function tick() {
     camera.position.x += (mouse.x * 0.18 - camera.position.x) * 0.04;
     camera.position.y += (-mouse.y * 0.12 - camera.position.y) * 0.04;
     camera.lookAt(marsGroup.position.x * 0.4, marsGroup.position.y * 0.4, 0);
+    flightTick();
   }
 
   renderer.render(scene, camera);
   requestAnimationFrame(tick);
 }
-tick();
 
 /* ================================================================
    UI 邏輯
@@ -2871,21 +3063,94 @@ tick();
 const progressBar = document.getElementById('progressBar');
 const hudScroll = document.getElementById('hudScroll');
 const hudCoords = document.getElementById('hudCoords');
-const dotsNav = document.getElementById('dots');
-let dots = [];
+const flightpath = document.getElementById('flightpath');
+const shuttle = document.getElementById('shuttle');
+const fpLabel = document.getElementById('fpLabel');
 let sections = [...document.querySelectorAll('main:not([hidden]) .panel')];
+let nodes = [];
+let nodeFracs = [];
+let trackH = 0;
+let shuttleY = 0;
+let shuttleVel = 0;
+let shuttleSnap = true;
 
-function buildDots() {
-  dotsNav.innerHTML = '';
-  dots = sections.map((s, i) => {
-    const b = document.createElement('button');
-    b.setAttribute('aria-label', `第 ${i + 1} 章`);
-    b.addEventListener('click', () => s.scrollIntoView({ behavior: 'smooth' }));
-    dotsNav.appendChild(b);
-    return b;
+// 計算航道高度與各節點的捲動比例
+function layoutFlight() {
+  trackH = flightpath.clientHeight;
+  const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+  nodeFracs = sections.map((s) => Math.min(1, Math.max(0, s.offsetTop / max)));
+  nodes.forEach((n, i) => { n.style.top = `${nodeFracs[i] * 100}%`; });
+}
+
+function buildFlightpath() {
+  nodes.forEach((n) => n.remove());
+  nodes = sections.map((s, i) => {
+    const title = (
+      s.querySelector('h2')?.textContent ||
+      s.querySelector('.hero__zh, .hero__end-title')?.textContent ||
+      `0${i + 1}`
+    ).trim();
+    const n = document.createElement('button');
+    n.className = 'flightpath__node';
+    n.setAttribute('aria-label', title);
+    n.addEventListener('click', () => s.scrollIntoView({ behavior: 'smooth' }));
+    n.addEventListener('pointerenter', () => {
+      fpLabel.textContent = title;
+      fpLabel.style.top = n.style.top;
+      fpLabel.classList.add('show');
+    });
+    n.addEventListener('pointerleave', () => fpLabel.classList.remove('show'));
+    flightpath.appendChild(n);
+    return n;
+  });
+  shuttleSnap = true;
+  layoutFlight();
+}
+buildFlightpath();
+
+// 星塵粒子拖尾
+function emitDust(y, speed) {
+  if (Math.random() > 0.45) return;
+  const d = document.createElement('span');
+  d.className = 'flightpath__dust';
+  d.style.top = `${y}px`;
+  d.style.setProperty('--dx', `${(Math.random() - 0.5) * 12}px`);
+  d.style.setProperty('--dy', `${(shuttleVel > 0 ? -1 : 1) * (8 + speed * 14)}px`);
+  flightpath.appendChild(d);
+  setTimeout(() => d.remove(), 700);
+}
+
+// 太空梭每幀更新（由主迴圈在行星頁呼叫）
+function flightTick() {
+  if (!trackH) layoutFlight();
+  const target = scrollT * trackH;
+  if (shuttleSnap) { shuttleY = target; shuttleSnap = false; }
+  const prev = shuttleY;
+  shuttleY += (target - shuttleY) * 0.12;
+  shuttleVel = shuttleY - prev;
+
+  const speed = Math.min(1, Math.abs(shuttleVel) / 6);
+  const flying = Math.abs(shuttleVel) > 0.18;
+  flightpath.classList.toggle('flying', flying);
+  flightpath.style.setProperty('--flame', (flying ? 0.5 + speed * 1.3 : 0).toFixed(2));
+
+  const bank = Math.max(-14, Math.min(14, -shuttleVel * 2.6));
+  shuttle.style.transform = `translate(-50%, ${shuttleY}px) rotate(${bank}deg)`;
+
+  if (flying) emitDust(shuttleY - Math.sign(shuttleVel) * 5, speed);
+
+  // 節點狀態：已飛過 / 目前所在
+  let activeIdx = 0;
+  let best = Infinity;
+  nodeFracs.forEach((f, i) => {
+    const d = Math.abs(f - scrollT);
+    if (d < best) { best = d; activeIdx = i; }
+  });
+  nodes.forEach((n, i) => {
+    n.classList.toggle('passed', nodeFracs[i] <= scrollT + 0.004);
+    n.classList.toggle('active', i === activeIdx);
   });
 }
-buildDots();
 
 function onScroll() {
   const max = document.documentElement.scrollHeight - window.innerHeight;
@@ -2897,9 +3162,6 @@ function onScroll() {
   const lat = (Math.sin(scrollT * Math.PI * 2) * 65).toFixed(2);
   const lon = ((scrollT * 720) % 360 - 180).toFixed(2);
   hudCoords.textContent = `LAT ${lat} · LON ${lon}`;
-
-  const idx = Math.min(Math.round(scrollT * (sections.length - 1)), sections.length - 1);
-  dots.forEach((d, i) => d.classList.toggle('active', i === idx));
 }
 window.addEventListener('scroll', onScroll, { passive: true });
 onScroll();
@@ -3078,9 +3340,9 @@ function applyPlanet(name) {
   hudSystem.textContent = cfg.system;
   document.title = cfg.title;
 
-  // 重新計算章節、重建導覽點
+  // 重新計算章節、重建航道
   sections = [...document.querySelectorAll('main:not([hidden]) .panel')];
-  buildDots();
+  buildFlightpath();
 }
 
 /* ---- 切換轉場：記憶各星球滾動位置 + 淡入淡出 ---- */
@@ -3488,11 +3750,15 @@ document.querySelectorAll('.calc').forEach((box) => {
 // 開站進入太陽系
 setPlanet('home');
 
+// 啟動主算圖迴圈（在所有狀態與航道變數宣告之後）
+tick();
+
 /* ---- resize ---- */
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  layoutFlight();
 });
 
 /* ---- 入場結束 ---- */
