@@ -7,7 +7,7 @@
 <meta name="description" content="一場深入紅色星球的沉浸式 3D 旅程" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;500;800&family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <link href="https://font.emtech.cc/css/GlowSansJPEx/900" rel="stylesheet" />
 <script type="importmap">
 {
@@ -29,8 +29,8 @@
   --hairline: rgba(255, 120, 70, 0.22);
   --sans: "Noto Sans TC", sans-serif;
   --heading: "GlowSansJPEx", "Noto Sans TC", sans-serif;
-  --display: "Unbounded", sans-serif;
-  --mono: "IBM Plex Mono", monospace;
+  --display: "Syncopate", sans-serif;
+  --mono: "Syncopate", "IBM Plex Mono", monospace;
   --accent-rgb: 255, 90, 43;
   --amber-rgb: 255, 179, 71;
   --glow-white: #fff2e8;
@@ -212,6 +212,99 @@ body.home #scene { touch-action: none; }
 @media (max-width: 760px) {
   .focus-card { left: 1rem; right: 1rem; width: auto; bottom: 4.2rem; }
 }
+
+/* ---- 地形沉浸模式 ---- */
+body.terrain .flightpath,
+body.terrain .progress,
+body.terrain .planet-nav,
+body.terrain .hud,
+body.terrain main,
+body.terrain .planet-tip { display: none !important; }
+
+.terrain-ui {
+  position: fixed;
+  inset: 0;
+  z-index: 24;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1.1s ease 0.3s;
+}
+.terrain-ui.show { opacity: 1; }
+.terrain-back {
+  position: absolute;
+  top: 1.6rem;
+  left: 2rem;
+  pointer-events: auto;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #eaf2ff;
+  background: rgba(10, 16, 28, 0.5);
+  border: 1px solid rgba(180, 205, 255, 0.3);
+  border-radius: 999px;
+  padding: 0.7rem 1.4rem;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: background 0.3s, box-shadow 0.3s;
+}
+.terrain-back:hover { background: rgba(30, 45, 75, 0.7); box-shadow: 0 0 16px rgba(150, 190, 255, 0.4); }
+.terrain-title {
+  position: absolute;
+  left: 3rem;
+  bottom: 3rem;
+  max-width: 540px;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.7);
+}
+.terrain-title__tag {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.18em;
+  color: #bcd4ff;
+  display: block;
+  margin-bottom: 0.6rem;
+}
+.terrain-title h2 {
+  font-family: var(--heading);
+  font-size: clamp(3rem, 8vw, 5.5rem);
+  font-weight: 900;
+  line-height: 1;
+  color: #fff;
+  margin-bottom: 0.8rem;
+  letter-spacing: 0.02em;
+}
+.terrain-title__en {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  color: #dfeaff;
+  display: block;
+}
+.terrain-title__desc {
+  margin-top: 1.1rem;
+  font-family: var(--sans);
+  font-size: 0.92rem;
+  line-height: 1.9;
+  color: rgba(235, 244, 255, 0.82);
+}
+
+/* 章節卡的「進入地形」按鈕 */
+.feature-explore {
+  margin-top: 0.9rem;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bg-deep);
+  background: linear-gradient(90deg, var(--rust), var(--amber));
+  border: none;
+  border-radius: 999px;
+  padding: 0.6rem 1.3rem;
+  cursor: pointer;
+  box-shadow: 0 0 16px rgba(var(--accent-rgb), 0.4);
+  transition: transform 0.2s, box-shadow 0.3s;
+}
+.feature-explore:hover { transform: translateY(-1px); box-shadow: 0 0 22px rgba(var(--accent-rgb), 0.7); }
 
 [hidden] { display: none !important; }
 
@@ -1091,6 +1184,17 @@ body.earth .feature { border-left-width: 3px; }
 <!-- 行星切換轉場遮罩 -->
 <div class="fader" id="fader"></div>
 
+<!-- 地形沉浸模式 UI -->
+<div class="terrain-ui" id="terrainUI" hidden>
+  <button class="terrain-back" id="terrainBack">← 返回地球</button>
+  <div class="terrain-title">
+    <span class="terrain-title__tag">PEAK · 27.99°N 86.93°E</span>
+    <h2>聖母峰</h2>
+    <span class="terrain-title__en">MOUNT EVEREST · 8,849 M</span>
+    <p class="terrain-title__desc">地球的最高點，喜馬拉雅板塊碰撞推升的世界之巔。此刻你站在雲海之上，仰望它鏽白相間的金字塔峰頂。</p>
+  </div>
+</div>
+
 <!-- 太陽系首頁 UI -->
 <div class="planet-tip" id="planetTip" hidden>
   <span class="mono planet-tip__name" id="tipName"></span>
@@ -1432,6 +1536,7 @@ body.earth .feature { border-left-width: 3px; }
       <div class="feature reveal">
         <h3>聖母峰 <span class="mono feature__tag">MOUNT EVEREST</span></h3>
         <p>海拔 <strong>8,849 公尺</strong>，板塊碰撞推出的世界之巔——而且它還在以每年約 4 毫米的速度長高。</p>
+        <button class="feature-explore" id="everestExplore">進入 3D 地形 →</button>
       </div>
       <div class="feature reveal">
         <h3>馬里亞納海溝 <span class="mono feature__tag">MARIANA TRENCH</span></h3>
@@ -3003,7 +3108,15 @@ const clock = new THREE.Clock();
 function tick() {
   const t = clock.getElapsedTime();
 
-  if (!homeActive) {
+  // 地形沉浸模式：接管整個畫面
+  if (terrainActive) {
+    terrainTick(t);
+    renderer.render(terrainScene, terrainCam);
+    requestAnimationFrame(tick);
+    return;
+  }
+
+  if (!homeActive && !zooming) {
     // 平滑追蹤滾動進度
     smooth.t += (scrollT - smooth.t) * 0.06;
     const k = lerpKeyframes(smooth.t);
@@ -3081,6 +3194,8 @@ function tick() {
 
   if (homeActive) {
     homeTick(t);
+  } else if (zooming) {
+    zoomTick(t);
   } else {
     camera.position.x += (mouse.x * 0.18 - camera.position.x) * 0.04;
     camera.position.y += (-mouse.y * 0.12 - camera.position.y) * 0.04;
@@ -3705,7 +3820,12 @@ function setPinHover(lm) {
 }
 function pinTap() {
   if (!pinHover) return;
-  // 旋轉星球，把地標轉到正對鏡頭
+  // 聖母峰：點擊直接俯衝進 3D 地形
+  if (pinHover.en === 'MOUNT EVEREST' && currentPlanet === 'earth') {
+    enterEverest();
+    return;
+  }
+  // 其他地標：旋轉星球，把地標轉到正對鏡頭
   const a = Math.atan2(pinHover._pos.x, pinHover._pos.z);
   const baseNow = mars.rotation.y - userSpin.y;
   let goal = -a - baseNow;
@@ -3795,6 +3915,7 @@ let audioStarted = false;
 let audioMuted = localStorage.getItem('ss_muted') === '1'; // 預設開
 let lastBlip = 0;
 const AMBIENT_TARGET = 0.85;
+const AMBIENT_LEVEL = 0.7; // 背景音樂相對音量（降 30%）
 
 // 各天體環境音氛圍參數
 const AMBIENT = {
@@ -3878,7 +3999,7 @@ function sndPlanet(key) {
   amb.nFilter.Q.setTargetAtTime(p.nQ, t, R);
   amb.nGain.gain.setTargetAtTime(p.noise, t, R);
   amb.lfo.frequency.setTargetAtTime(p.lfo, t, R);
-  amb.out.gain.setTargetAtTime(p.gain, t, R);
+  amb.out.gain.setTargetAtTime(p.gain * AMBIENT_LEVEL, t, R);
 }
 
 function blip(freq, dur, vol, type = 'sine') {
@@ -3963,6 +4084,282 @@ soundToggle.addEventListener('click', (e) => {
   if (audioMuted && thrustNode) thrustNode.g.gain.setTargetAtTime(0, actx.currentTime, 0.1);
 });
 
+/* ================================================================
+   聖母峰 3D 地形（程序化喜馬拉雅 · 電影運鏡 · 沉浸模式）
+   ================================================================ */
+let terrainActive = false;
+let zooming = false;
+let zoomStart = 0;
+let terrainStart = 0;
+let terrainScene = null, terrainCam = null, cloudMats = [], snowPts = null;
+const TERRAIN_SUN = new THREE.Vector3(-0.55, 0.4, 0.5).normalize();
+
+// JS 2D value-noise + fbm（CPU 端塑形地形高度）
+function thash(x, z) { const s = Math.sin(x * 127.1 + z * 311.7) * 43758.5453; return s - Math.floor(s); }
+function tnoise(x, z) {
+  const xi = Math.floor(x), zi = Math.floor(z), xf = x - xi, zf = z - zi;
+  const u = xf * xf * (3 - 2 * xf), v = zf * zf * (3 - 2 * zf);
+  const a = thash(xi, zi), b = thash(xi + 1, zi), c = thash(xi, zi + 1), d = thash(xi + 1, zi + 1);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+function tfbm(x, z) { let s = 0, a = 0.5, f = 1; for (let i = 0; i < 5; i++) { s += a * tnoise(x * f, z * f); f *= 2.03; a *= 0.5; } return s; }
+
+// 聖母峰massif 高度場：一座主導的金字塔尖峰 + 周邊峰群 + craggy 山脊
+function everestHeight(x, z) {
+  const peaks = [
+    [0, 0, 62, 60],     // 聖母峰主峰
+    [44, 30, 42, 40],   // 洛子峰
+    [-50, 26, 46, 36],  // 努子峰
+    [22, -48, 34, 26],
+    [-34, -40, 38, 24],
+  ];
+  let h = 0;
+  for (const [px, pz, pr, ph] of peaks) {
+    const d = Math.hypot(x - px, z - pz);
+    const prof = Math.max(0, 1 - d / pr);
+    h += ph * Math.pow(prof, 1.7);
+  }
+  const massif = Math.min(1, h / 18);
+  const ridge = (1 - Math.abs(tfbm(x * 0.028, z * 0.028) * 2 - 1)) * 13 * massif;
+  const detail = tfbm(x * 0.075 + 11, z * 0.075 + 11) * 5 * massif;
+  const foot = tfbm(x * 0.018 - 7, z * 0.018 - 7) * 4;
+  return h + ridge + detail + foot - 2;
+}
+
+function buildTerrain() {
+  terrainScene = new THREE.Scene();
+  terrainCam = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.5, 3000);
+
+  // 地形網格（CPU 位移 + 重算法線）
+  const SIZE = 520, SEG = 360;
+  const geo = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    pos.setY(i, everestHeight(pos.getX(i), pos.getZ(i)));
+  }
+  geo.computeVertexNormals();
+
+  const terrainMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uLight: { value: TERRAIN_SUN },
+      uSky: { value: new THREE.Color(0.42, 0.56, 0.82) },
+      uFog: { value: new THREE.Color(0.74, 0.82, 0.93) },
+      uSnow: { value: 25.0 },
+    },
+    vertexShader: /* glsl */ `
+      varying vec3 vWPos;
+      varying vec3 vWNormal;
+      void main() {
+        vWNormal = normalize(mat3(modelMatrix) * normal);
+        vWPos = (modelMatrix * vec4(position, 1.0)).xyz;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uLight; uniform vec3 uSky; uniform vec3 uFog; uniform float uSnow;
+      varying vec3 vWPos;
+      varying vec3 vWNormal;
+      ${NOISE_GLSL}
+      void main() {
+        vec3 n = normalize(vWNormal);
+        float slope = clamp(n.y, 0.0, 1.0);
+        float var = fbm(vWPos * 0.06);
+        // 雪：高處且坡度不陡才積雪；陡壁露出岩石
+        float snow = smoothstep(uSnow - 8.0, uSnow + 5.0, vWPos.y + var * 7.0)
+                   * smoothstep(0.38, 0.62, slope);
+        snow = clamp(snow, 0.0, 1.0);
+        vec3 rock = mix(vec3(0.17, 0.15, 0.13), vec3(0.36, 0.31, 0.27), var);
+        rock = mix(vec3(0.20, 0.18, 0.17), rock, slope);             // 陡壁更暗
+        vec3 snowCol = mix(vec3(0.80, 0.85, 0.93), vec3(1.0), var * 0.5 + 0.5);
+        vec3 base = mix(rock, snowCol, snow);
+        // 光照：太陽 + 半球環境光
+        float diff = clamp(dot(n, normalize(uLight)), 0.0, 1.0);
+        vec3 sun = vec3(1.0, 0.94, 0.84);
+        vec3 amb = mix(vec3(0.18, 0.20, 0.26), uSky, slope * 0.5 + 0.5) * 0.46;
+        vec3 col = base * (sun * diff + amb);
+        col += snow * pow(diff, 9.0) * 0.22;                         // 雪面反光
+        // 大氣霧（距離越遠越融入天色）
+        float dist = length(cameraPosition - vWPos);
+        float fog = 1.0 - exp(-dist * dist * 0.0000038);
+        col = mix(col, uFog, clamp(fog, 0.0, 1.0));
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `,
+  });
+  terrainScene.add(new THREE.Mesh(geo, terrainMat));
+
+  // 天空圓頂
+  const skyMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uTop: { value: new THREE.Color(0.18, 0.34, 0.66) },
+      uBottom: { value: new THREE.Color(0.78, 0.85, 0.95) },
+      uSunDir: { value: TERRAIN_SUN },
+    },
+    vertexShader: `varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uTop; uniform vec3 uBottom; uniform vec3 uSunDir;
+      varying vec3 vDir;
+      void main() {
+        vec3 d = normalize(vDir);
+        float t = clamp(d.y * 0.5 + 0.5, 0.0, 1.0);
+        vec3 col = mix(uBottom, uTop, pow(t, 0.7));
+        float sd = clamp(dot(d, normalize(uSunDir)), 0.0, 1.0);
+        col += vec3(1.0, 0.95, 0.85) * pow(sd, 250.0) * 2.0;        // 太陽
+        col += vec3(1.0, 0.9, 0.78) * pow(sd, 7.0) * 0.3;           // 暈光
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `,
+    side: THREE.BackSide,
+    depthWrite: false,
+  });
+  terrainScene.add(new THREE.Mesh(new THREE.SphereGeometry(1400, 32, 32), skyMat));
+
+  // 雲海（兩層水平面，飄動）
+  for (let i = 0; i < 2; i++) {
+    const cm = new THREE.ShaderMaterial({
+      uniforms: { uTime: { value: 0 }, uSeed: { value: i * 17.3 } },
+      vertexShader: `varying vec3 vWPos; void main(){ vWPos = (modelMatrix*vec4(position,1.0)).xyz; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+      fragmentShader: /* glsl */ `
+        uniform float uTime; uniform float uSeed;
+        varying vec3 vWPos;
+        ${NOISE_GLSL}
+        void main() {
+          vec2 p = vWPos.xz * 0.011 + vec2(uTime * 0.004 + uSeed, uTime * 0.0025);
+          float c = fbm(vec3(p, uTime * 0.008 + uSeed));
+          float a = smoothstep(0.42, 0.74, c);
+          float dist = length(cameraPosition.xz - vWPos.xz);
+          a *= smoothstep(1300.0, 250.0, dist) * smoothstep(60.0, 160.0, dist);
+          gl_FragColor = vec4(vec3(0.96, 0.97, 1.0), a * 0.8);
+        }
+      `,
+      transparent: true,
+      depthWrite: false,
+    });
+    cloudMats.push(cm);
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(2600, 2600), cm);
+    plane.rotation.x = -Math.PI / 2;
+    plane.position.y = 12 + i * 5;
+    terrainScene.add(plane);
+  }
+
+  // 飄雪粒子
+  const sn = 700;
+  const sp = new Float32Array(sn * 3);
+  for (let i = 0; i < sn; i++) {
+    sp[i * 3] = (Math.random() - 0.5) * 260;
+    sp[i * 3 + 1] = Math.random() * 140;
+    sp[i * 3 + 2] = (Math.random() - 0.5) * 260;
+  }
+  const sg = new THREE.BufferGeometry();
+  sg.setAttribute('position', new THREE.BufferAttribute(sp, 3));
+  const snowTex = (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 32;
+    const g = c.getContext('2d');
+    const grd = g.createRadialGradient(16, 16, 0, 16, 16, 16);
+    grd.addColorStop(0, 'rgba(255,255,255,1)');
+    grd.addColorStop(0.5, 'rgba(255,255,255,0.55)');
+    grd.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grd; g.fillRect(0, 0, 32, 32);
+    return new THREE.CanvasTexture(c);
+  })();
+  snowPts = new THREE.Points(sg, new THREE.PointsMaterial({
+    map: snowTex, color: 0xffffff, size: 1.5, transparent: true, opacity: 0.85,
+    sizeAttenuation: true, depthWrite: false,
+  }));
+  terrainScene.add(snowPts);
+}
+
+// 電影運鏡：從山腳緩緩拉升環繞、仰望峰頂
+function terrainTick(t) {
+  const tt = t - terrainStart;
+  const ang = 0.6 + tt * 0.028;
+  const rad = 230 - Math.min(tt * 6, 70);
+  const hgt = 38 + Math.min(tt * 2.2, 34);
+  terrainCam.position.set(
+    Math.sin(ang) * rad + Math.sin(tt * 0.4) * 2.0,
+    hgt,
+    Math.cos(ang) * rad
+  );
+  terrainCam.lookAt(0, 44 + Math.sin(tt * 0.25) * 2.0, 0);
+  cloudMats.forEach((m) => { m.uniforms.uTime.value = t; });
+  if (snowPts) {
+    const a = snowPts.geometry.attributes.position;
+    for (let i = 0; i < a.count; i++) {
+      let y = a.getY(i) - 0.35;
+      let x = a.getX(i) + 0.12;
+      if (y < 0) { y = 140; }
+      if (x > 130) { x = -130; }
+      a.setY(i, y); a.setX(i, x);
+    }
+    a.needsUpdate = true;
+    snowPts.position.set(terrainCam.position.x, 0, terrainCam.position.z); // 跟著鏡頭
+  }
+}
+
+// 進入地形：地球 zoom-in → 轉場
+function zoomTick(t) {
+  const z = Math.min((t - zoomStart) / 1.3, 1);
+  const e = z * z * (3 - 2 * z);
+  marsGroup.scale.setScalar(1 + e * 3.2);          // 地球放大
+  marsGroup.position.set(0, e * 0.3, e * 2.2);     // 朝鏡頭逼近
+  camera.position.set(0, 0, 4.2 - e * 1.6);
+  camera.lookAt(0, e * 0.2, 0);
+  if (z > 0.55) fader.classList.add('on');
+  if (z >= 1) { zooming = false; activateTerrain(); }
+}
+
+function activateTerrain() {
+  if (!terrainScene) buildTerrain();
+  terrainCam.aspect = window.innerWidth / window.innerHeight;
+  terrainCam.updateProjectionMatrix();
+  terrainStart = clock.getElapsedTime();
+  terrainActive = true;
+  document.body.classList.add('terrain');
+  terrainUI.hidden = false;
+  // 還原地球變換（離開時用得到）
+  marsGroup.scale.setScalar(1);
+  marsGroup.position.set(0, 0, 0);
+  requestAnimationFrame(() => {
+    fader.classList.remove('on');
+    terrainUI.classList.add('show');
+  });
+}
+
+let everestReturnScroll = 0;
+
+function enterEverest() {
+  if (terrainActive || zooming || currentPlanet !== 'earth') return;
+  everestReturnScroll = window.scrollY; // 記住地球頁的捲動位置
+  zooming = true;
+  zoomStart = clock.getElapsedTime();
+  sndWhoosh();
+}
+
+function exitTerrain() {
+  if (!terrainActive) return;
+  terrainUI.classList.remove('show');
+  fader.classList.add('on');
+  sndWhoosh();
+  setTimeout(() => {
+    terrainActive = false;
+    document.body.classList.remove('terrain');
+    terrainUI.hidden = true;
+    camera.position.set(0, 0, 4.2);
+    // 還原離開前的捲動位置，並讓運鏡與航道太空梭直接就位
+    window.scrollTo({ top: everestReturnScroll, behavior: 'instant' });
+    onScroll();
+    smooth.t = scrollT;
+    shuttleSnap = true;
+    fader.classList.remove('on');
+  }, 420);
+}
+
+const terrainUI = document.getElementById('terrainUI');
+document.getElementById('terrainBack').addEventListener('click', exitTerrain);
+document.getElementById('everestExplore').addEventListener('click', enterEverest);
+window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && terrainActive) exitTerrain(); });
+
 // 開站進入太陽系
 setPlanet('home');
 
@@ -3975,6 +4372,10 @@ window.addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   layoutFlight();
+  if (terrainCam) {
+    terrainCam.aspect = window.innerWidth / window.innerHeight;
+    terrainCam.updateProjectionMatrix();
+  }
 });
 
 /* ---- 入場結束 ---- */
