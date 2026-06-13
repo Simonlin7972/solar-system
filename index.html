@@ -287,6 +287,13 @@ body.terrain .planet-tip { display: none !important; }
   line-height: 1.9;
   color: rgba(235, 244, 255, 0.82);
 }
+/* 各場景的 UI 主題色 */
+body.site-mariana .terrain-title__tag,
+body.site-mariana .terrain-title__en { color: #8fe2ff; }
+body.site-mariana .terrain-back { color: #d8f3ff; border-color: rgba(120, 210, 255, 0.35); }
+body.site-amazon .terrain-title__tag,
+body.site-amazon .terrain-title__en { color: #b6efa0; }
+body.site-amazon .terrain-back { color: #e7ffe0; border-color: rgba(150, 230, 130, 0.35); }
 
 /* 章節卡的「進入地形」按鈕 */
 .feature-explore {
@@ -1188,10 +1195,10 @@ body.earth .feature { border-left-width: 3px; }
 <div class="terrain-ui" id="terrainUI" hidden>
   <button class="terrain-back" id="terrainBack">← 返回地球</button>
   <div class="terrain-title">
-    <span class="terrain-title__tag">PEAK · 27.99°N 86.93°E</span>
-    <h2>聖母峰</h2>
-    <span class="terrain-title__en">MOUNT EVEREST · 8,849 M</span>
-    <p class="terrain-title__desc">地球的最高點，喜馬拉雅板塊碰撞推升的世界之巔。此刻你站在雲海之上，仰望它鏽白相間的金字塔峰頂。</p>
+    <span class="terrain-title__tag" id="terrainTag">PEAK · 27.99°N 86.93°E</span>
+    <h2 id="terrainName">聖母峰</h2>
+    <span class="terrain-title__en" id="terrainEn">MOUNT EVEREST · 8,849 M</span>
+    <p class="terrain-title__desc" id="terrainDesc"></p>
   </div>
 </div>
 
@@ -1541,10 +1548,12 @@ body.earth .feature { border-left-width: 3px; }
       <div class="feature reveal">
         <h3>馬里亞納海溝 <span class="mono feature__tag">MARIANA TRENCH</span></h3>
         <p>深達 <strong>10,935 公尺</strong> 的地殼最深處。把聖母峰丟進去，峰頂距離海面還有兩公里。</p>
+        <button class="feature-explore" id="marianaExplore">下潛 3D 海溝 →</button>
       </div>
       <div class="feature reveal">
         <h3>亞馬遜雨林 <span class="mono feature__tag">THE AMAZON</span></h3>
         <p>橫跨九個國家的綠色之肺，容納地球十分之一的物種。一棵樹一天能蒸騰上千公升的水，撐起整片大陸的雨季。</p>
+        <button class="feature-explore" id="amazonExplore">進入 3D 雨林 →</button>
       </div>
     </div>
   </section>
@@ -3820,9 +3829,9 @@ function setPinHover(lm) {
 }
 function pinTap() {
   if (!pinHover) return;
-  // 聖母峰：點擊直接俯衝進 3D 地形
-  if (pinHover.en === 'MOUNT EVEREST' && currentPlanet === 'earth') {
-    enterEverest();
+  // 地球地標：點擊直接俯衝進對應的 3D 沉浸場景
+  if (currentPlanet === 'earth' && LANDMARK_SITE[pinHover.en]) {
+    enterSite(LANDMARK_SITE[pinHover.en]);
     return;
   }
   // 其他地標：旋轉星球，把地標轉到正對鏡頭
@@ -4091,8 +4100,8 @@ let terrainActive = false;
 let zooming = false;
 let zoomStart = 0;
 let terrainStart = 0;
-let terrainScene = null, terrainCam = null, cloudMats = [], snowPts = null;
-const TERRAIN_SUN = new THREE.Vector3(-0.55, 0.4, 0.5).normalize();
+let terrainScene = null, terrainCam = null, terrainUpdate = null;
+let currentSiteKey = null;
 
 // JS 2D value-noise + fbm（CPU 端塑形地形高度）
 function thash(x, z) { const s = Math.sin(x * 127.1 + z * 311.7) * 43758.5453; return s - Math.floor(s); }
@@ -4126,175 +4135,287 @@ function everestHeight(x, z) {
   return h + ridge + detail + foot - 2;
 }
 
-function buildTerrain() {
-  terrainScene = new THREE.Scene();
-  terrainCam = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.5, 3000);
+// 共用：柔和圓點粒子貼圖
+function dotTexture(col = '255,255,255') {
+  const c = document.createElement('canvas'); c.width = c.height = 32;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(16, 16, 0, 16, 16, 16);
+  grd.addColorStop(0, `rgba(${col},1)`);
+  grd.addColorStop(0.5, `rgba(${col},0.5)`);
+  grd.addColorStop(1, `rgba(${col},0)`);
+  g.fillStyle = grd; g.fillRect(0, 0, 32, 32);
+  return new THREE.CanvasTexture(c);
+}
 
-  // 地形網格（CPU 位移 + 重算法線）
+/* ---------------- 聖母峰：喜馬拉雅雪峰 ---------------- */
+function buildEverest() {
+  const scene = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.5, 3000);
+  const SUN = new THREE.Vector3(-0.55, 0.4, 0.5).normalize();
+
   const SIZE = 520, SEG = 360;
   const geo = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG);
   geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position;
-  for (let i = 0; i < pos.count; i++) {
-    pos.setY(i, everestHeight(pos.getX(i), pos.getZ(i)));
-  }
+  for (let i = 0; i < pos.count; i++) pos.setY(i, everestHeight(pos.getX(i), pos.getZ(i)));
   geo.computeVertexNormals();
 
   const terrainMat = new THREE.ShaderMaterial({
     uniforms: {
-      uLight: { value: TERRAIN_SUN },
+      uLight: { value: SUN },
       uSky: { value: new THREE.Color(0.42, 0.56, 0.82) },
       uFog: { value: new THREE.Color(0.74, 0.82, 0.93) },
       uSnow: { value: 25.0 },
     },
-    vertexShader: /* glsl */ `
-      varying vec3 vWPos;
-      varying vec3 vWNormal;
-      void main() {
-        vWNormal = normalize(mat3(modelMatrix) * normal);
-        vWPos = (modelMatrix * vec4(position, 1.0)).xyz;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `,
+    vertexShader: `varying vec3 vWPos; varying vec3 vWNormal; void main(){ vWNormal = normalize(mat3(modelMatrix)*normal); vWPos = (modelMatrix*vec4(position,1.0)).xyz; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
     fragmentShader: /* glsl */ `
       uniform vec3 uLight; uniform vec3 uSky; uniform vec3 uFog; uniform float uSnow;
-      varying vec3 vWPos;
-      varying vec3 vWNormal;
+      varying vec3 vWPos; varying vec3 vWNormal;
       ${NOISE_GLSL}
       void main() {
         vec3 n = normalize(vWNormal);
         float slope = clamp(n.y, 0.0, 1.0);
         float var = fbm(vWPos * 0.06);
-        // 雪：高處且坡度不陡才積雪；陡壁露出岩石
-        float snow = smoothstep(uSnow - 8.0, uSnow + 5.0, vWPos.y + var * 7.0)
-                   * smoothstep(0.38, 0.62, slope);
+        float snow = smoothstep(uSnow - 8.0, uSnow + 5.0, vWPos.y + var * 7.0) * smoothstep(0.38, 0.62, slope);
         snow = clamp(snow, 0.0, 1.0);
         vec3 rock = mix(vec3(0.17, 0.15, 0.13), vec3(0.36, 0.31, 0.27), var);
-        rock = mix(vec3(0.20, 0.18, 0.17), rock, slope);             // 陡壁更暗
+        rock = mix(vec3(0.20, 0.18, 0.17), rock, slope);
         vec3 snowCol = mix(vec3(0.80, 0.85, 0.93), vec3(1.0), var * 0.5 + 0.5);
         vec3 base = mix(rock, snowCol, snow);
-        // 光照：太陽 + 半球環境光
         float diff = clamp(dot(n, normalize(uLight)), 0.0, 1.0);
-        vec3 sun = vec3(1.0, 0.94, 0.84);
         vec3 amb = mix(vec3(0.18, 0.20, 0.26), uSky, slope * 0.5 + 0.5) * 0.46;
-        vec3 col = base * (sun * diff + amb);
-        col += snow * pow(diff, 9.0) * 0.22;                         // 雪面反光
-        // 大氣霧（距離越遠越融入天色）
+        vec3 col = base * (vec3(1.0, 0.94, 0.84) * diff + amb);
+        col += snow * pow(diff, 9.0) * 0.22;
         float dist = length(cameraPosition - vWPos);
-        float fog = 1.0 - exp(-dist * dist * 0.0000038);
-        col = mix(col, uFog, clamp(fog, 0.0, 1.0));
+        col = mix(col, uFog, clamp(1.0 - exp(-dist * dist * 0.0000038), 0.0, 1.0));
         gl_FragColor = vec4(col, 1.0);
       }
     `,
   });
-  terrainScene.add(new THREE.Mesh(geo, terrainMat));
+  scene.add(new THREE.Mesh(geo, terrainMat));
 
-  // 天空圓頂
   const skyMat = new THREE.ShaderMaterial({
-    uniforms: {
-      uTop: { value: new THREE.Color(0.18, 0.34, 0.66) },
-      uBottom: { value: new THREE.Color(0.78, 0.85, 0.95) },
-      uSunDir: { value: TERRAIN_SUN },
-    },
-    vertexShader: `varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-    fragmentShader: /* glsl */ `
-      uniform vec3 uTop; uniform vec3 uBottom; uniform vec3 uSunDir;
-      varying vec3 vDir;
-      void main() {
-        vec3 d = normalize(vDir);
-        float t = clamp(d.y * 0.5 + 0.5, 0.0, 1.0);
-        vec3 col = mix(uBottom, uTop, pow(t, 0.7));
-        float sd = clamp(dot(d, normalize(uSunDir)), 0.0, 1.0);
-        col += vec3(1.0, 0.95, 0.85) * pow(sd, 250.0) * 2.0;        // 太陽
-        col += vec3(1.0, 0.9, 0.78) * pow(sd, 7.0) * 0.3;           // 暈光
-        gl_FragColor = vec4(col, 1.0);
-      }
-    `,
-    side: THREE.BackSide,
-    depthWrite: false,
+    uniforms: { uTop: { value: new THREE.Color(0.18, 0.34, 0.66) }, uBottom: { value: new THREE.Color(0.78, 0.85, 0.95) }, uSunDir: { value: SUN } },
+    vertexShader: `varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+    fragmentShader: `uniform vec3 uTop; uniform vec3 uBottom; uniform vec3 uSunDir; varying vec3 vDir; void main(){ vec3 d=normalize(vDir); float t=clamp(d.y*0.5+0.5,0.0,1.0); vec3 col=mix(uBottom,uTop,pow(t,0.7)); float sd=clamp(dot(d,normalize(uSunDir)),0.0,1.0); col+=vec3(1.0,0.95,0.85)*pow(sd,250.0)*2.0; col+=vec3(1.0,0.9,0.78)*pow(sd,7.0)*0.3; gl_FragColor=vec4(col,1.0); }`,
+    side: THREE.BackSide, depthWrite: false,
   });
-  terrainScene.add(new THREE.Mesh(new THREE.SphereGeometry(1400, 32, 32), skyMat));
+  scene.add(new THREE.Mesh(new THREE.SphereGeometry(1400, 32, 32), skyMat));
 
-  // 雲海（兩層水平面，飄動）
+  const cloudMats = [];
   for (let i = 0; i < 2; i++) {
     const cm = new THREE.ShaderMaterial({
       uniforms: { uTime: { value: 0 }, uSeed: { value: i * 17.3 } },
-      vertexShader: `varying vec3 vWPos; void main(){ vWPos = (modelMatrix*vec4(position,1.0)).xyz; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
-      fragmentShader: /* glsl */ `
-        uniform float uTime; uniform float uSeed;
-        varying vec3 vWPos;
-        ${NOISE_GLSL}
-        void main() {
-          vec2 p = vWPos.xz * 0.011 + vec2(uTime * 0.004 + uSeed, uTime * 0.0025);
-          float c = fbm(vec3(p, uTime * 0.008 + uSeed));
-          float a = smoothstep(0.42, 0.74, c);
-          float dist = length(cameraPosition.xz - vWPos.xz);
-          a *= smoothstep(1300.0, 250.0, dist) * smoothstep(60.0, 160.0, dist);
-          gl_FragColor = vec4(vec3(0.96, 0.97, 1.0), a * 0.8);
-        }
-      `,
-      transparent: true,
-      depthWrite: false,
+      vertexShader: `varying vec3 vWPos; void main(){ vWPos=(modelMatrix*vec4(position,1.0)).xyz; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+      fragmentShader: `uniform float uTime; uniform float uSeed; varying vec3 vWPos; ${NOISE_GLSL}
+        void main(){ vec2 p=vWPos.xz*0.011+vec2(uTime*0.004+uSeed,uTime*0.0025); float c=fbm(vec3(p,uTime*0.008+uSeed)); float a=smoothstep(0.42,0.74,c); float dist=length(cameraPosition.xz-vWPos.xz); a*=smoothstep(1300.0,250.0,dist)*smoothstep(60.0,160.0,dist); gl_FragColor=vec4(vec3(0.96,0.97,1.0),a*0.8); }`,
+      transparent: true, depthWrite: false,
     });
     cloudMats.push(cm);
     const plane = new THREE.Mesh(new THREE.PlaneGeometry(2600, 2600), cm);
     plane.rotation.x = -Math.PI / 2;
     plane.position.y = 12 + i * 5;
-    terrainScene.add(plane);
+    scene.add(plane);
   }
 
-  // 飄雪粒子
-  const sn = 700;
-  const sp = new Float32Array(sn * 3);
-  for (let i = 0; i < sn; i++) {
-    sp[i * 3] = (Math.random() - 0.5) * 260;
-    sp[i * 3 + 1] = Math.random() * 140;
-    sp[i * 3 + 2] = (Math.random() - 0.5) * 260;
-  }
-  const sg = new THREE.BufferGeometry();
-  sg.setAttribute('position', new THREE.BufferAttribute(sp, 3));
-  const snowTex = (() => {
-    const c = document.createElement('canvas'); c.width = c.height = 32;
-    const g = c.getContext('2d');
-    const grd = g.createRadialGradient(16, 16, 0, 16, 16, 16);
-    grd.addColorStop(0, 'rgba(255,255,255,1)');
-    grd.addColorStop(0.5, 'rgba(255,255,255,0.55)');
-    grd.addColorStop(1, 'rgba(255,255,255,0)');
-    g.fillStyle = grd; g.fillRect(0, 0, 32, 32);
-    return new THREE.CanvasTexture(c);
-  })();
-  snowPts = new THREE.Points(sg, new THREE.PointsMaterial({
-    map: snowTex, color: 0xffffff, size: 1.5, transparent: true, opacity: 0.85,
-    sizeAttenuation: true, depthWrite: false,
-  }));
-  terrainScene.add(snowPts);
-}
+  const sn = 700, sp = new Float32Array(sn * 3);
+  for (let i = 0; i < sn; i++) { sp[i * 3] = (Math.random() - 0.5) * 260; sp[i * 3 + 1] = Math.random() * 140; sp[i * 3 + 2] = (Math.random() - 0.5) * 260; }
+  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3));
+  const snowPts = new THREE.Points(sg, new THREE.PointsMaterial({ map: dotTexture('255,255,255'), size: 1.5, transparent: true, opacity: 0.85, sizeAttenuation: true, depthWrite: false }));
+  scene.add(snowPts);
 
-// 電影運鏡：從山腳緩緩拉升環繞、仰望峰頂
-function terrainTick(t) {
-  const tt = t - terrainStart;
-  const ang = 0.6 + tt * 0.028;
-  const rad = 230 - Math.min(tt * 6, 70);
-  const hgt = 38 + Math.min(tt * 2.2, 34);
-  terrainCam.position.set(
-    Math.sin(ang) * rad + Math.sin(tt * 0.4) * 2.0,
-    hgt,
-    Math.cos(ang) * rad
-  );
-  terrainCam.lookAt(0, 44 + Math.sin(tt * 0.25) * 2.0, 0);
-  cloudMats.forEach((m) => { m.uniforms.uTime.value = t; });
-  if (snowPts) {
+  function update(tt, t) {
+    const ang = 0.6 + tt * 0.028;
+    const rad = 230 - Math.min(tt * 6, 70);
+    const hgt = 38 + Math.min(tt * 2.2, 34);
+    cam.position.set(Math.sin(ang) * rad + Math.sin(tt * 0.4) * 2.0, hgt, Math.cos(ang) * rad);
+    cam.lookAt(0, 44 + Math.sin(tt * 0.25) * 2.0, 0);
+    cloudMats.forEach((m) => { m.uniforms.uTime.value = t; });
     const a = snowPts.geometry.attributes.position;
     for (let i = 0; i < a.count; i++) {
-      let y = a.getY(i) - 0.35;
-      let x = a.getX(i) + 0.12;
-      if (y < 0) { y = 140; }
-      if (x > 130) { x = -130; }
+      let y = a.getY(i) - 0.35, x = a.getX(i) + 0.12;
+      if (y < 0) y = 140;
+      if (x > 130) x = -130;
       a.setY(i, y); a.setX(i, x);
     }
     a.needsUpdate = true;
-    snowPts.position.set(terrainCam.position.x, 0, terrainCam.position.z); // 跟著鏡頭
+    snowPts.position.set(cam.position.x, 0, cam.position.z);
   }
+  return { scene, cam, update };
+}
+
+/* ---------------- 馬里亞納海溝：深海下潛 ---------------- */
+function buildMariana() {
+  const scene = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.5, 2000);
+  const DEEP = new THREE.Color(0.02, 0.05, 0.09);
+
+  // 深海背景（上方微光 → 下方全黑）
+  scene.add(new THREE.Mesh(new THREE.SphereGeometry(900, 32, 32), new THREE.ShaderMaterial({
+    vertexShader: `varying vec3 vD; void main(){ vD=normalize(position); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+    fragmentShader: `varying vec3 vD; void main(){ float t=clamp(vD.y*0.5+0.5,0.0,1.0); vec3 c=mix(vec3(0.004,0.018,0.035), vec3(0.05,0.20,0.30), pow(t,2.4)); gl_FragColor=vec4(c,1.0); }`,
+    side: THREE.BackSide, depthWrite: false,
+  })));
+
+  // 海溝岩壁（左右兩道）
+  const wallMat = new THREE.ShaderMaterial({
+    uniforms: { uDeep: { value: DEEP } },
+    vertexShader: `varying vec3 vP; varying vec3 vN; void main(){ vN=normalize(mat3(modelMatrix)*normal); vP=(modelMatrix*vec4(position,1.0)).xyz; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+    fragmentShader: `uniform vec3 uDeep; varying vec3 vP; varying vec3 vN; ${NOISE_GLSL}
+      void main(){ vec3 n=normalize(vN); float var=fbm(vP*0.05);
+        vec3 rock=mix(vec3(0.07,0.12,0.16), vec3(0.17,0.24,0.30), var);
+        float up=clamp(dot(n,vec3(0.0,1.0,0.0))*0.5+0.5,0.0,1.0);
+        float depthLight=clamp(1.0-(-vP.y)/420.0, 0.07, 1.0);
+        vec3 col=rock*(0.38+up*0.62)*depthLight;
+        col+=vec3(0.10,0.34,0.46)*pow(up,2.4)*depthLight*0.6;
+        float dist=length(cameraPosition-vP);
+        col=mix(col, uDeep, clamp(1.0-exp(-dist*0.011),0.0,1.0));
+        gl_FragColor=vec4(col,1.0); }`,
+  });
+  function wall(side) {
+    const g = new THREE.PlaneGeometry(360, 500, 70, 120);
+    const p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const lx = p.getX(i), ly = p.getY(i);
+      p.setZ(i, tfbm(lx * 0.025 + side * 9, ly * 0.025) * 24 + tfbm(lx * 0.08, ly * 0.08 + 3) * 6);
+    }
+    g.computeVertexNormals();
+    const m = new THREE.Mesh(g, wallMat);
+    m.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
+    m.position.set(side * 66, -210, 0);
+    scene.add(m);
+  }
+  wall(1); wall(-1);
+
+  // 海雪（marine snow）
+  const mn = 2000, mp = new Float32Array(mn * 3);
+  for (let i = 0; i < mn; i++) { mp[i * 3] = (Math.random() - 0.5) * 180; mp[i * 3 + 1] = (Math.random() - 0.5) * 420; mp[i * 3 + 2] = (Math.random() - 0.5) * 180; }
+  const mg = new THREE.BufferGeometry(); mg.setAttribute('position', new THREE.BufferAttribute(mp, 3));
+  const snow = new THREE.Points(mg, new THREE.PointsMaterial({ map: dotTexture('220,235,245'), size: 1.0, transparent: true, opacity: 0.5, sizeAttenuation: true, depthWrite: false }));
+  scene.add(snow);
+
+  // 生物發光
+  const bn = 46, bp = new Float32Array(bn * 3);
+  for (let i = 0; i < bn; i++) { bp[i * 3] = (Math.random() - 0.5) * 150; bp[i * 3 + 1] = (Math.random() - 0.5) * 380; bp[i * 3 + 2] = (Math.random() - 0.5) * 150; }
+  const bgeo = new THREE.BufferGeometry(); bgeo.setAttribute('position', new THREE.BufferAttribute(bp, 3));
+  const biolum = new THREE.Points(bgeo, new THREE.PointsMaterial({ map: dotTexture('90,225,255'), color: 0x6cdcff, size: 2.4, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, sizeAttenuation: true, depthWrite: false }));
+  scene.add(biolum);
+
+  function update(tt, t) {
+    const camY = -8 - Math.min(tt * 7, 330);
+    cam.position.set(Math.sin(tt * 0.18) * 10, camY, Math.cos(tt * 0.13) * 8);
+    cam.lookAt(Math.sin(tt * 0.1) * 14, camY - 30, 38);
+    const a = snow.geometry.attributes.position;
+    for (let i = 0; i < a.count; i++) { let y = a.getY(i) - 0.18; if (y < -210) y = 210; a.setY(i, y); }
+    a.needsUpdate = true;
+    snow.position.set(cam.position.x, camY, cam.position.z);
+    biolum.position.set(cam.position.x, camY, cam.position.z);
+    biolum.material.opacity = 0.6 + Math.sin(t * 1.5) * 0.3;
+  }
+  return { scene, cam, update };
+}
+
+/* ---------------- 亞馬遜雨林：叢林 ---------------- */
+function buildAmazon() {
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x33502f, 0.0135);
+  const cam = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.5, 2000);
+
+  const sun = new THREE.DirectionalLight(0xfff0c8, 2.2); sun.position.set(60, 130, 20); scene.add(sun);
+  scene.add(new THREE.HemisphereLight(0x9fd06a, 0x2a3b1e, 0.75));
+  scene.add(new THREE.AmbientLight(0x33442a, 0.5));
+
+  scene.add(new THREE.Mesh(new THREE.SphereGeometry(900, 32, 32), new THREE.ShaderMaterial({
+    vertexShader: `varying vec3 vD; void main(){ vD=normalize(position); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+    fragmentShader: `varying vec3 vD; void main(){ float t=clamp(vD.y*0.5+0.5,0.0,1.0); vec3 c=mix(vec3(0.50,0.60,0.45), vec3(0.34,0.54,0.60), pow(t,1.3)); gl_FragColor=vec4(c,1.0); }`,
+    side: THREE.BackSide, depthWrite: false,
+  })));
+
+  // 地面
+  function groundH(x, z) { return tfbm(x * 0.01, z * 0.01) * 14 + tfbm(x * 0.04 + 5, z * 0.04) * 4; }
+  const gg = new THREE.PlaneGeometry(1000, 1000, 120, 120); gg.rotateX(-Math.PI / 2);
+  const gp = gg.attributes.position;
+  for (let i = 0; i < gp.count; i++) gp.setY(i, groundH(gp.getX(i), gp.getZ(i)));
+  gg.computeVertexNormals();
+  scene.add(new THREE.Mesh(gg, new THREE.MeshStandardMaterial({ color: 0x2c4322, roughness: 1 })));
+
+  // 樹（instanced 樹幹 + 樹冠）
+  const TN = 560;
+  const trunkGeo = new THREE.CylinderGeometry(0.45, 1.1, 11, 6); trunkGeo.translate(0, 5.5, 0);
+  const trunk = new THREE.InstancedMesh(trunkGeo, new THREE.MeshStandardMaterial({ color: 0x4a3526, roughness: 1 }), TN);
+  const canopyGeo = new THREE.IcosahedronGeometry(4.6, 1);
+  const canopy = new THREE.InstancedMesh(canopyGeo, new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), TN * 2);
+  const dummy = new THREE.Object3D(), col = new THREE.Color();
+  let ci = 0;
+  for (let i = 0; i < TN; i++) {
+    const ang = Math.random() * 6.283, rad = 18 + Math.random() * 430;
+    const x = Math.cos(ang) * rad, z = Math.sin(ang) * rad - 90;
+    const gh = groundH(x, z), s = 0.7 + Math.random() * 1.9;
+    dummy.position.set(x, gh, z); dummy.rotation.set(0, Math.random() * 6.28, 0);
+    dummy.scale.set(s, s * (0.8 + Math.random() * 0.7), s); dummy.updateMatrix(); trunk.setMatrixAt(i, dummy.matrix);
+    const th = 11 * dummy.scale.y;
+    for (let k = 0; k < 2; k++) {
+      dummy.position.set(x + (Math.random() - 0.5) * 2, gh + th - k * 2.6, z + (Math.random() - 0.5) * 2);
+      const cs = s * (1.15 - k * 0.32);
+      dummy.scale.set(cs, cs * 0.82, cs); dummy.rotation.set(Math.random(), Math.random() * 6.28, Math.random());
+      dummy.updateMatrix(); canopy.setMatrixAt(ci, dummy.matrix);
+      col.setHSL(0.27 + Math.random() * 0.07, 0.42 + Math.random() * 0.2, 0.17 + Math.random() * 0.13);
+      canopy.setColorAt(ci, col); ci++;
+    }
+  }
+  trunk.instanceMatrix.needsUpdate = true; canopy.instanceMatrix.needsUpdate = true;
+  if (canopy.instanceColor) canopy.instanceColor.needsUpdate = true;
+  scene.add(trunk, canopy);
+
+  // 光束 god-rays
+  const rayMat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 } },
+    vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+    fragmentShader: `uniform float uTime; varying vec2 vUv; void main(){ float edge=smoothstep(0.0,0.35,vUv.x)*(1.0-smoothstep(0.65,1.0,vUv.x)); float fade=1.0-vUv.y; float a=edge*fade*(0.55+0.3*sin(uTime*0.5+vUv.y*4.0)); gl_FragColor=vec4(vec3(1.0,0.96,0.72), a*0.2); }`,
+    transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+  });
+  for (let i = 0; i < 7; i++) {
+    const r = new THREE.Mesh(new THREE.PlaneGeometry(15, 75), rayMat);
+    const ang = Math.random() * 6.28, rad = Math.random() * 200;
+    r.position.set(Math.cos(ang) * rad, 36, Math.sin(ang) * rad - 90);
+    r.rotation.set(0.3, Math.random() * 6.28, 0.16);
+    scene.add(r);
+  }
+
+  // 漂浮花粉
+  const pn = 340, pp = new Float32Array(pn * 3);
+  for (let i = 0; i < pn; i++) { pp[i * 3] = (Math.random() - 0.5) * 240; pp[i * 3 + 1] = Math.random() * 64; pp[i * 3 + 2] = (Math.random() - 0.5) * 240 - 90; }
+  const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pp, 3));
+  const motes = new THREE.Points(pg, new THREE.PointsMaterial({ map: dotTexture('255,245,200'), size: 0.7, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, sizeAttenuation: true, depthWrite: false }));
+  scene.add(motes);
+
+  function update(tt, t) {
+    cam.position.set(Math.sin(tt * 0.12) * 30, 16 + Math.sin(tt * 0.2) * 2, 130 - tt * 4.2);
+    cam.lookAt(Math.sin(tt * 0.1) * 20, 23, cam.position.z - 60);
+    rayMat.uniforms.uTime.value = t;
+    const a = motes.geometry.attributes.position;
+    for (let i = 0; i < a.count; i++) { let y = a.getY(i) + 0.04, x = a.getX(i) + 0.05; if (y > 64) y = 0; a.setY(i, y); a.setX(i, x); }
+    a.needsUpdate = true;
+    motes.position.set(cam.position.x, 0, cam.position.z);
+  }
+  return { scene, cam, update };
+}
+
+// 場景註冊表
+const SITE_DEFS = {
+  everest: { zh: '聖母峰', en: 'MOUNT EVEREST · 8,849 M', tag: 'PEAK · 27.99°N 86.93°E', cls: 'site-everest', build: buildEverest,
+    desc: '地球的最高點，喜馬拉雅板塊碰撞推升的世界之巔。此刻你站在雲海之上，仰望它鏽白相間的金字塔峰頂。' },
+  mariana: { zh: '馬里亞納海溝', en: 'CHALLENGER DEEP · −10,935 M', tag: 'TRENCH · 11.37°N 142.59°E', cls: 'site-mariana', build: buildMariana,
+    desc: '地殼的最深處。陽光在數百公尺上方就已耗盡，你正沿著岩壁沉入永夜，身旁飄著緩緩落下的海雪與幽冷的生物光。' },
+  amazon: { zh: '亞馬遜雨林', en: 'THE AMAZON · 5,500,000 KM²', tag: 'RAINFOREST · 3.46°S 62.21°W', cls: 'site-amazon', build: buildAmazon,
+    desc: '地球之肺，容納十分之一的已知物種。陽光穿過層層樹冠化成光束，空氣裡漂著花粉與濕氣——這裡是生命最濃稠的地方。' },
+};
+const LANDMARK_SITE = { 'MOUNT EVEREST': 'everest', 'MARIANA TRENCH': 'mariana', 'THE AMAZON': 'amazon' };
+const builtSites = {};
+
+// 電影運鏡：派發到目前場景的 update
+function terrainTick(t) {
+  if (terrainUpdate) terrainUpdate(t - terrainStart, t);
 }
 
 // 進入地形：地球 zoom-in → 轉場
@@ -4310,12 +4431,22 @@ function zoomTick(t) {
 }
 
 function activateTerrain() {
-  if (!terrainScene) buildTerrain();
+  const def = SITE_DEFS[currentSiteKey];
+  if (!builtSites[currentSiteKey]) builtSites[currentSiteKey] = def.build();
+  const site = builtSites[currentSiteKey];
+  terrainScene = site.scene;
+  terrainCam = site.cam;
+  terrainUpdate = site.update;
   terrainCam.aspect = window.innerWidth / window.innerHeight;
   terrainCam.updateProjectionMatrix();
   terrainStart = clock.getElapsedTime();
   terrainActive = true;
-  document.body.classList.add('terrain');
+  // 標題與主題
+  terrainTag.textContent = def.tag;
+  terrainName.textContent = def.zh;
+  terrainEn.textContent = def.en;
+  terrainDesc.textContent = def.desc;
+  document.body.classList.add('terrain', def.cls);
   terrainUI.hidden = false;
   // 還原地球變換（離開時用得到）
   marsGroup.scale.setScalar(1);
@@ -4328,8 +4459,9 @@ function activateTerrain() {
 
 let everestReturnScroll = 0;
 
-function enterEverest() {
-  if (terrainActive || zooming || currentPlanet !== 'earth') return;
+function enterSite(key) {
+  if (terrainActive || zooming || currentPlanet !== 'earth' || !SITE_DEFS[key]) return;
+  currentSiteKey = key;
   everestReturnScroll = window.scrollY; // 記住地球頁的捲動位置
   zooming = true;
   zoomStart = clock.getElapsedTime();
@@ -4343,7 +4475,7 @@ function exitTerrain() {
   sndWhoosh();
   setTimeout(() => {
     terrainActive = false;
-    document.body.classList.remove('terrain');
+    document.body.classList.remove('terrain', 'site-everest', 'site-mariana', 'site-amazon');
     terrainUI.hidden = true;
     camera.position.set(0, 0, 4.2);
     // 還原離開前的捲動位置，並讓運鏡與航道太空梭直接就位
@@ -4356,8 +4488,14 @@ function exitTerrain() {
 }
 
 const terrainUI = document.getElementById('terrainUI');
+const terrainTag = document.getElementById('terrainTag');
+const terrainName = document.getElementById('terrainName');
+const terrainEn = document.getElementById('terrainEn');
+const terrainDesc = document.getElementById('terrainDesc');
 document.getElementById('terrainBack').addEventListener('click', exitTerrain);
-document.getElementById('everestExplore').addEventListener('click', enterEverest);
+document.getElementById('everestExplore').addEventListener('click', () => enterSite('everest'));
+document.getElementById('marianaExplore').addEventListener('click', () => enterSite('mariana'));
+document.getElementById('amazonExplore').addEventListener('click', () => enterSite('amazon'));
 window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && terrainActive) exitTerrain(); });
 
 // 開站進入太陽系
