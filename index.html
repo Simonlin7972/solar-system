@@ -3086,6 +3086,8 @@ let realScale = false;
 
 const smooth = { t: 0 };
 let scrollT = 0;
+let scrollMax = 1;   // 快取，避免每次 scroll 事件讀 scrollHeight（強制重排）
+let lastPct = -1;    // 只在百分比改變時才寫 HUD，省下重繪
 
 function ease(t) { return t * t * (3 - 2 * t); }
 
@@ -3210,6 +3212,7 @@ function tick() {
     camera.position.y += (-mouse.y * 0.12 - camera.position.y) * 0.04;
     camera.lookAt(marsGroup.position.x * 0.4, marsGroup.position.y * 0.4, 0);
     flightTick();
+    updateScrollHud();   // HUD/進度條寫入限制在每幀一次，與觸控板事件頻率脫鉤
   }
 
   renderer.render(scene, camera);
@@ -3236,8 +3239,8 @@ let shuttleSnap = true;
 // 計算航道高度與各節點的捲動比例
 function layoutFlight() {
   trackH = flightpath.clientHeight;
-  const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
-  nodeFracs = sections.map((s) => Math.min(1, Math.max(0, s.offsetTop / max)));
+  scrollMax = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+  nodeFracs = sections.map((s) => Math.min(1, Math.max(0, s.offsetTop / scrollMax)));
   nodes.forEach((n, i) => { n.style.top = `${nodeFracs[i] * 100}%`; });
 }
 
@@ -3312,13 +3315,17 @@ function flightTick() {
   });
 }
 
+// scroll 事件只做最便宜的事：用快取的 scrollMax 算 scrollT（window.scrollY 不觸發重排）。
+// 所有 DOM 寫入移到 rAF 的 updateScrollHud（每幀最多一次、且百分比沒變就跳過）。
 function onScroll() {
-  const max = document.documentElement.scrollHeight - window.innerHeight;
-  scrollT = max > 0 ? window.scrollY / max : 0;
+  scrollT = Math.min(1, Math.max(0, window.scrollY / scrollMax));
+}
+function updateScrollHud() {
+  const pct = Math.round(scrollT * 100);
+  if (pct === lastPct) return;
+  lastPct = pct;
   progressBar.style.width = `${scrollT * 100}%`;
-  hudScroll.textContent = `${String(Math.round(scrollT * 100)).padStart(3, '0')}%`;
-
-  // 假裝的軌道座標，純氛圍
+  hudScroll.textContent = `${String(pct).padStart(3, '0')}%`;
   const lat = (Math.sin(scrollT * Math.PI * 2) * 65).toFixed(2);
   const lon = ((scrollT * 720) % 360 - 180).toFixed(2);
   hudCoords.textContent = `LAT ${lat} · LON ${lon}`;
